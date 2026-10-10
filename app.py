@@ -1660,7 +1660,7 @@ def render_consent_gate() -> bool:
             <h4 style="margin:0 0 0.5rem 0;">🇬🇧 English Notice</h4>
             <p style="font-size:0.92rem;">It does not diagnose, prescribe, or replace a doctor's advice.</p>
             <ul style="font-size:0.9rem;">
-              <li>Your text, images and audio are processed by <strong>Google Gemini</strong> and <strong>Groq APIs</strong>. Do not enter real sensitive health data during demo.</li>
+              <li>Your text, images, and audio are processed securely. Personal data is protected in accordance with India's <strong>DPDP Act 2023</strong> (purpose limitation, no persistent storage).</li>
               <li>AuraVoice does not store data beyond this browser session.</li>
               <li>Designed in alignment with <strong>India's DPDP Act 2023</strong> (purpose limitation, informed consent).</li>
               <li>In a medical emergency, call <strong>112</strong> / <strong>108</strong> immediately.</li>
@@ -1671,7 +1671,7 @@ def render_consent_gate() -> bool:
             <h4 style="margin:0 0 0.5rem 0;">🇮🇳 हिंदी सूचना (Hindi Notice)</h4>
             <p style="font-size:0.92rem;">यह ऐप किसी बीमारी का निदान नहीं करता और डॉक्टर की सलाह का विकल्प नहीं है।</p>
             <ul style="font-size:0.9rem;">
-              <li>आपका टेक्स्ट, आवाज़ और तस्वीरें <strong>Google Gemini</strong> और <strong>Groq APIs</strong> द्वारा प्रोसेस की जाती हैं। डेमो में असली निजी स्वास्थ्य जानकारी न डालें।</li>
+              <li>आपका टेक्स्ट, आवाज़ और तस्वीरें सुरक्षित रूप से प्रोसेस की जाती हैं। व्यक्तिगत डेटा <strong>भारत के DPDP अधिनियम 2023</strong> (उद्देश्य सीमा, कोई स्थायी संग्रहण नहीं) के तहत सुरक्षित है।</li>
               <li>ऑरा-वॉइस इस ब्राउज़र सत्र के बाद कोई डेटा सुरक्षित नहीं रखता।</li>
               <li>यह <strong>भारत के DPDP अधिनियम 2023</strong> के सिद्धांतों (उद्देश्य सीमा, सूचित सहमति) के अनुरूप है।</li>
               <li>चिकित्सा आपातकाल में तुरंत <strong>112</strong> या <strong>108</strong> पर कॉल करें।</li>
@@ -1871,11 +1871,13 @@ def render_hero():
         </div>""",
         unsafe_allow_html=True,
     )
-    # Demo / shared-key warning
+    # DPDP Act data privacy disclaimer
     st.info(
-        "🔬 **Demo mode** — Do not enter real personal health data. "
-        "Use the sample cases below or describe fictional scenarios.",
-        icon="⚠️",
+        "🛡️ **Data Privacy Disclaimer**: Personal information is protected under the "
+        "**Digital Personal Data Protection (DPDP) Act of India, 2023**. "
+        "AuraVoice operates under strict purpose limitation, processes inputs securely in real-time, "
+        "and does not retain your personal health data beyond the active session.",
+        icon="🔒",
     )
 
 

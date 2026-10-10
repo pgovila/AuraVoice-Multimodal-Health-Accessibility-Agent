@@ -2,8 +2,11 @@
 
 > *"What if your phone could be your doctor, your guide, and your safety net — all at once?"*
 
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://auravoice-multimodal-health-accessibility-agent-7sc3pkcpirqquh.streamlit.app/)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://python.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
+🚀 **Live Deployment:** [https://auravoice-multimodal-health-accessibility-agent-7sc3pkcpirqquh.streamlit.app/](https://auravoice-multimodal-health-accessibility-agent-7sc3pkcpirqquh.streamlit.app/)
 
 ---
 
@@ -270,6 +273,8 @@ streamlit run app.py
 ---
 
 ## ☁️ Deployment to Streamlit Community Cloud
+
+🌐 **Live Application URL:** [https://auravoice-multimodal-health-accessibility-agent-7sc3pkcpirqquh.streamlit.app/](https://auravoice-multimodal-health-accessibility-agent-7sc3pkcpirqquh.streamlit.app/)
 
 ### Step 1: Push to GitHub
 
