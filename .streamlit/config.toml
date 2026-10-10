@@ -1,0 +1,21 @@
+[theme]
+# AuraVoice — Dark medical theme
+base            = "dark"
+primaryColor    = "#4F8EF7"          # accessible blue — used for buttons, highlights
+backgroundColor = "#0F1117"          # deep dark background
+secondaryBackgroundColor = "#1C2333" # card / sidebar background
+textColor       = "#E8EAF0"          # high-contrast body text
+font            = "sans serif"
+
+[server]
+# Streamlit Cloud ignores most of these; they matter for self-hosted deployments
+maxUploadSize   = 10                 # MB — enough for camera frames + audio clips
+enableCORS      = false
+headless        = true               # required for cloud deployments
+
+[browser]
+gatherUsageStats = false             # opt out of Streamlit telemetry
+
+[runner]
+# Avoids "missing ScriptRunContext" warnings in background threads
+fastReruns = true

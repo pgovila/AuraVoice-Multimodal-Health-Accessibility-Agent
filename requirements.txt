@@ -1,0 +1,22 @@
+# AuraVoice — Requirements
+# Tested with Python 3.12
+# Install: pip install -r requirements.txt
+
+# ── Web Framework ─────────────────────────────────────────────────────────────
+streamlit>=1.35.0,<2.0.0
+
+# ── LLM Providers ────────────────────────────────────────────────────────────
+google-genai>=2.0.0               # Gemini 3.6 Flash (primary) — new official SDK
+groq>=0.9.0                       # Groq / Qwen3.8-27b (fallback)
+
+# ── Image Processing ─────────────────────────────────────────────────────────
+Pillow>=10.0.0
+
+# ── Audio / Speech ────────────────────────────────────────────────────────────
+SpeechRecognition>=3.10.0         # STT wrapper (Google free API)
+streamlit-mic-recorder>=0.0.8     # In-browser mic recorder (works on Python 3.12+)
+# PyAudio>=0.2.14                 # Uncomment for local mic support (needs portaudio)
+
+# ── Utilities ────────────────────────────────────────────────────────────────
+python-dotenv>=1.0.0              # .env loading for local development
+tzdata>=2024.1                    # IANA timezone database for Windows zoneinfo support

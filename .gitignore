@@ -1,0 +1,7 @@
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+IBM_Bob_screenshots_extracted/
+.streamlit/secrets.toml
+.env

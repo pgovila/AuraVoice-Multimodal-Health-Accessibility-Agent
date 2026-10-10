@@ -1,0 +1,76 @@
+text,language,expected_tier
+"I think I am having a heart attack",en,1
+"seene mein bahut tez dard ho raha hai",hi,1
+"dil ka daura pad gaya",hi,1
+"सीने में बहुत तेज दर्द है",hi,1
+"he stopped breathing suddenly",en,1
+"not breathing at all call ambulance",en,1
+"dam ghut raha hai sans nahi aa rahi",hi,1
+"her face is drooping on the left side",en,1
+"slurred speech and sudden arm weakness",en,1
+"muh tedha ho gaya aur bolna band ho gaya",hi,1
+"he is unconscious and not waking up",en,1
+"behosh ho gaya hai aur hosh nahi aa raha",hi,1
+"no pulse detected on wrist or neck",en,1
+"took too many sleeping pills overdose",en,1
+"convulsions won't stop for 5 minutes",en,1
+"bitten by a snake on the foot",en,1
+"saanp ne kata abhi turant",hi,1
+"साँप ने काटा है पैर पर",hi,1
+"bichchu ne kata bahut dard hai",hi,1
+"mere haath par koi cheez ne kata shayad saanp tha",hi,1
+"severe scorpion sting with swelling",en,1
+"worst headache of my life like thunderclap",en,1
+"heavy bleeding won't stop from deep wound",en,1
+"khoon band nahi ho raha hai bahut beh raha hai",hi,1
+"heavy bleeding in third trimester of pregnancy",en,1
+"baby not moving for hours in ninth month",en,1
+"eclampsia during labour",en,1
+"going to kill myself tonight",en,2
+"i want to end my life right now",en,2
+"aatmahatya karna chahta hoon",hi,2
+"आत्महत्या करने का सोच रहा हूँ",hi,2
+"khud ko nuksaan pahunchane ka mann kar raha hai",hi,2
+"I have chest tightness and pain when walking uphill",en,2
+"chhati mein dabav aur dard lag raha hai",hi,2
+"having shortness of breath when lying flat",en,2
+"saans lene mein takleef ho rahi hai",hi,2
+"sudden severe confusion and disorientation",en,2
+"water broke and having contractions every 3 minutes",en,2
+"prasav peeda shuru ho gayi hai",hi,2
+"I have mild fever and sore throat for two days",en,0
+"mujhe do din se zukaam aur halka bukhaar hai",hi,0
+"common cold symptoms and runny nose",en,0
+"can you help me read this medicine strip",en,0
+"yeh dawai din mein kitni baar leni hai",hi,0
+"how do I set an alarm for blood pressure medication",en,0
+"hello good morning",en,0
+"namaste app kaise chalate hain",hi,0
+"thank you for your advice",en,0
+"where is the nearest chemist",en,0
+"my heart is full of joy today",en,0
+"mera dil khushiyon se bhar gaya",hi,0
+"I had a stroke of good luck on my exam",en,0
+"the fitting room is located on the second floor",en,0
+"mera gala kharab hai",hi,0
+"seene mein dard nahi hai aaj",hi,0
+"I do not have any chest pain today",en,0
+"pehle kabhi seene mein dard nahi hua",hi,0
+"father had a heart attack last year but fine now",en,0
+"pichle saal dil ka daura pada tha par ab theek hain",hi,0
+"he had a seizure three years ago in college",en,0
+"kai saal pehle behosh hua tha ek baar",hi,0
+"what is an overdose and what causes it",en,0
+"what happens during an epileptic seizure",en,0
+"what is eclampsia during pregnancy",en,0
+"what to do if someone becomes unconscious in heat",en,0
+"explain the symptoms of snakebite in biology",en,0
+"tell me about stroke prevention in elderly",en,0
+"I have an upset stomach after dinner",en,0
+"pet mein dard hai thoda sa gas ki wajah se",hi,0
+"mild knee pain when squatting",en,0
+"ghutne mein dard rehta hai thoda",hi,0
+"itching on arms after new soap",en,0
+"tvacha par khujli ho rahi hai",hi,0
+"can I take paracetamol with milk",en,0
+"kya yeh dawai khane ke baad leni chahiye",hi,0
