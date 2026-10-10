@@ -28,7 +28,17 @@ Look for `Python312` in the path.
 
 ---
 
-## Creating the Virtual Environment
+## Quick Start (Windows)
+
+Simply double-click `start.bat` or run:
+```cmd
+start.bat
+```
+This automatically sets up/activates the virtual environment, installs dependencies, verifies the secrets file, and launches AuraVoice.
+
+---
+
+## Creating the Virtual Environment Manually
 
 ### Windows (cmd)
 ```cmd
