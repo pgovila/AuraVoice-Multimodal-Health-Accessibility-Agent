@@ -2395,8 +2395,12 @@ def tab_doctor_tools(gemini_client, groq_client):
 def tab_about():
     st.subheader("About AuraVoice")
     st.markdown(f"""
-AuraVoice is a health information and accessibility tool for elderly, visually impaired,
-and rural patients. It is an MVP built for people seeking immediate or any medical help.
+AuraVoice is a multimodal health information and accessibility assistant tailored for elderly, visually impaired,
+and multilingual patients across India.
+
+🌐 **Live Application:** [https://auravoice-multimodal-health-accessibility-agent-7sc3pkcpirqquh.streamlit.app/](https://auravoice-multimodal-health-accessibility-agent-7sc3pkcpirqquh.streamlit.app/)  
+📂 **Source Code:** [https://github.com/pgovila/AuraVoice-Multimodal-Health-Accessibility-Agent](https://github.com/pgovila/AuraVoice-Multimodal-Health-Accessibility-Agent)  
+🏷️ **Topics & Categories:** `healthcare` · `accessibility` · `streamlit` · `gemini` · `hindi` · `multimodal-ai` · `voice-agent` · `dpdp-act`
 
 ### 🎯 Features
 | Feature | Technology |
