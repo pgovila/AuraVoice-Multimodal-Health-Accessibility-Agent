@@ -1,6 +1,6 @@
 # EVALUATION.md — AuraVoice Evaluation Protocol
 
-Run these tests before making credibility claims in your presentation or submission.
+Run these tests before making credibility claims in your project documentation.
 Results should be reported at the top of your README with the date and evaluator.
 
 ---
@@ -328,4 +328,4 @@ text,language,expected_tier
 
 Add 100+ rows following this pattern. Partner with a Hindi speaker to create
 authentic negative cases for Hindi. Report test set composition (source, annotator)
-in your submission.
+in your project documentation.

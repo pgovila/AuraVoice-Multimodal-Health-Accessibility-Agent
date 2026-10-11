@@ -16,7 +16,12 @@ import sys
 from collections import defaultdict
 
 # Import pure emergency module
-from emergency import classify, is_strong_past_tense, Decision
+from emergency import (
+    classify,
+    Decision,
+    resolve_rule_tier,
+    evaluate_rule_prediction,
+)
 
 
 def wilson_ci(p: float, n: int, z: float = 1.96) -> tuple[float, float]:
@@ -41,16 +46,8 @@ def run_evaluation(csv_path: str = "eval_emergency.csv"):
             # 1. Pure classifier decision
             dec = classify(text)
 
-            # Strong past-tense check
-            if dec.tier > 0 and not dec.crisis and is_strong_past_tense(text):
-                rule_pred = 0  # past-tense confirmed/downgraded
-            elif dec.info_query:
-                # Informational query: show banner + answer; classified as non-alert or info
-                rule_pred = 0
-            elif dec.crisis:
-                rule_pred = max(dec.tier, 2)
-            else:
-                rule_pred = dec.tier
+            # Use canonical post-classification resolver from emergency.py (prevents logic drift)
+            rule_pred = evaluate_rule_prediction(text)
 
             results.append({
                 "text": text,
@@ -125,7 +122,7 @@ def run_evaluation(csv_path: str = "eval_emergency.csv"):
     ]
     print(f"Wrong-name / Cross-tier discrepancies: {len(wrong_name)}")
     for wn in wrong_name:
-        print(f"  • \"{wn['text']}\" -> Expected {wn['expected']}, Got {wn['predicted_rule']} (Matched: '{wn['matched']}')")
+        print(f"  - \"{wn['text']}\" -> Expected {wn['expected']}, Got {wn['predicted_rule']} (Matched: '{wn['matched']}')")
 
     return results
 

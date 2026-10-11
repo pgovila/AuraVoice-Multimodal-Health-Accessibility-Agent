@@ -38,7 +38,7 @@ class TestIndianPrescriptionShorthand:
         Amlodipine 5mg OD
         Augmentin 625mg BD PC
         Pantoprazole 40mg OD HS AC
-        Combiflam SOS
+        Combiflam 400mg SOS
         """
         meds = parse_indian_prescription_shorthand(text)
         assert len(meds) == 4
@@ -57,6 +57,11 @@ class TestIndianPrescriptionShorthand:
 
         # Combiflam SOS -> as needed
         assert "SOS" in meds[3]["timing"] or "as needed" in meds[3]["timing"]
+
+    def test_shorthand_sos_no_dose_rejected(self):
+        text = "Combiflam SOS"
+        meds = parse_indian_prescription_shorthand(text)
+        assert len(meds) == 0
 
     def test_all_input_medicines_captured(self):
         text = """

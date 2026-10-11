@@ -246,6 +246,11 @@ class TestInfoQuery:
         d = classify("what is the difference between unconscious and comatose?")
         assert d.info_query is True
 
+    def test_substring_word_boundary_not_live_cue(self):
+        # 'anatomy' ends in 'my' — must NOT falsely trigger the 'my' live cue
+        d = classify("what is the anatomy of choking?")
+        assert d.info_query is True
+
 
 # ---------------------------------------------------------------------------
 # STRONG PAST-TENSE MARKERS

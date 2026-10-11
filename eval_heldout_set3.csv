@@ -1,0 +1,50 @@
+text,language,expected_tier
+"My elderly mother collapsed on the floor and is not responding to our voices",en,1
+"Baby swallowed a small button battery 10 minutes ago and is choking",en,1
+"Sudden paralysis on the right side of his body and his mouth is drooping",en,1
+"He came into contact with a high voltage wire and has no pulse",en,1
+"Deep cut on the thigh from an accident and blood is spurting out uncontrollably",en,1
+"Severe anaphylactic reaction after peanut butter and his throat is closing up completely",en,1
+"She has been having violent convulsions for over five minutes without stopping",en,1
+"My wife is 38 weeks pregnant and bleeding heavily with severe cramping",en,1
+"Grandfather took the entire bottle of sleeping pills and cannot be woken up",en,1
+"Crushing chest pressure radiating into the jaw and left shoulder with cold sweats",en,1
+"Sudden inability to breathe and his lips have turned blue",en,1
+"Severe burn covering entire chest and face from hot cooking oil explosion",en,1
+"बच्चा अचानक बेहोश होकर गिर पड़ा और सांस नहीं ले पा रहा है",hi,1
+"सीने में बहुत तेज दर्द हो रहा है और बायां हाथ सुन्न पड़ गया है",hi,1
+"खेत में काम करते समय सांप ने पैर में डस लिया है",hi,1
+"मुंह से बहुत ज्यादा खून की उल्टी हो रही है और चक्कर आ रहे हैं",hi,1
+"अचानक लकवा मार गया है और एक तरफ का शरीर बिल्कुल हिल नहीं रहा",hi,1
+"गला पूरा घुट रहा है और सांस बिल्कुल अंदर नहीं जा रही",hi,1
+"Severe throbbing headache with stiff neck and high fever for 6 hours",en,2
+"Shortness of breath that gets worse when lying down flat",en,2
+"Acute severe abdominal pain in the lower right side with nausea",en,2
+"Asthma flare up since morning and the inhaler is not providing relief",en,2
+"Heart is beating extremely fast and irregularly along with severe lightheadedness",en,2
+"Pregnant with contractions coming every 4 minutes",en,2
+"High fever of 103 F for three days with persistent confusion",en,2
+"Sudden loss of vision in one eye accompanied by dizziness",en,2
+"Severe coughing spells with thick rust-colored sputum and sharp chest tightness",en,2
+"दो दिन से बहुत तेज पेट में असहनीय दर्द हो रहा है और उल्टी आ रही है",hi,2
+"सांस लेने में बहुत दिक्कत हो रही है और इनहेलर से भी आराम नहीं मिल रहा",hi,2
+"दमा का दौरा पड़ गया है और सांस फूलती जा रही है",hi,2
+"तेज बुखार के साथ गर्दन में बहुत ज्यादा अकड़न हो गई है",hi,2
+"कल रात से दिल की धड़कन बहुत तेज और असामान्य चल रही है",hi,2
+"I have had a mild runny nose and sneezing since yesterday",en,0
+"Slight lower back ache after sitting at the desk for long hours",en,0
+"Can you tell me which foods are rich in dietary fiber?",en,0
+"What is the normal blood pressure range for an adult?",en,0
+"I had severe food poisoning three years ago during vacation",en,0
+"My heart is full of joy after hearing the good news today",en,0
+"Small red mosquito bite on my forearm that itches slightly",en,0
+"Mild tension headache after looking at computer screen all afternoon",en,0
+"Dry skin on elbows during winter season",en,0
+"What exercises are safe for someone with mild knee osteoarthritis?",en,0
+"My grandfather had a mild stroke five years ago and recovered well",en,0
+"हल्की सी सर्दी और जुकाम है दो दिन से",hi,0
+"घुटने में हल्का दर्द है सीढ़ियां चढ़ते समय",hi,0
+"क्या आप बता सकते हैं कि स्वस्थ रहने के लिए कितना पानी पीना चाहिए?",hi,0
+"चार साल पहले मुझे तेज मलेरिया हुआ था",hi,0
+"आज मौसम बहुत अच्छा है और मन बहुत खुश है",hi,0
+"हाथ पर हल्की सी खरोंच आ गई है",hi,0

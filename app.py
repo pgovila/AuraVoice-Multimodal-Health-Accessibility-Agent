@@ -1,20 +1,19 @@
 """
 AuraVoice: Multimodal Health & Accessibility Agent
 ===================================================
-Track: Inclusive Technology
 
 Architecture
 ------------
 - Frontend  : Streamlit 1.35+
 - Primary   : Google Gemini 3.6 Flash (multimodal) via google-genai SDK
 - Fallback  : Groq Qwen3.8-27b (text-only) via Groq SDK
-- STT       : SpeechRecognition (language-aware) + streamlit-mic-recorder
-- Safety    : Tiered multilingual emergency detection (no false-suppress) → LLM confirm
+- STT       : SpeechRecognition (language-aware) + streamlit-mic-recorder + Groq Whisper
+- Safety    : Tiered multilingual emergency detection (no false-suppress) → Dual LLM safety layer
 - Privacy   : No PII stored; task-scoped context; browser session only
 
 Module map
 ----------
- 1. constants        – model IDs, emergency phrases, prompts, hotlines
+ 1. constants        – model IDs, prompts, hotlines
  2. image_quality    – blur / glare / size checks (soft-block)
  3. emergency        – tiered detection, NO negation suppression, LLM confirm
  4. llm              – Gemini + Groq init + orchestration + streaming
@@ -24,10 +23,13 @@ Module map
  8. handoff_agent    – doctor handoff (verbatim patient words + summary)
  9. reconcile_agent  – discharge reconciliation (structured JSON → table)
 10. session          – st.session_state initialisation
-11. sidebar          – API keys, profile, simple-mode toggle
-12. tts              – text-to-speech (markdown-stripped, safe JS)
-13. ui_tabs          – all tab renderers (results cached in session_state)
-14. main             – entry point (startup self-test, secrets guard)
+11. tts              – text-to-speech (markdown-stripped, safe JS)
+12. consent          – informed consent gate
+13. sidebar          – API keys, profile, simple-mode toggle
+14. simple_mode      – accessibility CSS injection
+15. india_pathways   – verified emergency hotlines panel
+16. ui_tabs          – all tab renderers (results cached in session_state)
+17. main             – entry point (startup self-test, secrets guard)
 """
 
 # ── stdlib ────────────────────────────────────────────────────────────────────
@@ -837,11 +839,11 @@ def process_audio_input(
     language = user_profile.get("language", "English")
     transcript = transcribe_audio(audio_bytes, language)
 
-    # If native STT failed on format, try Whisper
-    if transcript.startswith("[Audio format") or transcript.startswith("[STT service"):
+    # If native STT failed (format, service error, or unintelligible audio), retry with Whisper
+    if transcript.startswith("["):
         lang_code = STT_LANG_CODES.get(language, "hi-IN")
         whisper_result = transcribe_with_whisper(audio_bytes, groq_client, lang_code)
-        if whisper_result:
+        if whisper_result and not whisper_result.startswith("["):
             transcript = whisper_result
 
     if transcript.startswith("["):
@@ -916,11 +918,6 @@ def detect_symptom_emergency(
     from emergency import Decision
     dec = _em_classify(symptoms)
 
-    # Devanagari recall boost: if Devanagari is present and rule returned 0, upgrade ONLY on explicit True
-    if is_devanagari(symptoms) and not dec.is_emergency:
-        if llm_emergency_check(symptoms, gemini_client, groq_client) is True:
-            dec = Decision(tier=2, matched="llm-classifier (Devanagari)")
-
     # Past-event confirmation: user confirmed it was in the past
     if confirmed_past:
         if dec.tier == 1:
@@ -930,8 +927,13 @@ def detect_symptom_emergency(
     if dec.tier == 1 and not confirmed_past and is_strong_past_tense(symptoms):
         return Decision(tier=-1, matched=dec.matched)
 
-    # Tier-2 LLM confirm: veto non-crisis, non-snakebite if LLM says clean NO
-    if dec.tier == 2 and not dec.snakebite and not dec.crisis:
+    # ── SECOND-LAYER LLM SAFETY CHECK ON EVERY INPUT ──
+    # 1. If rule returned tier 0 (non-emergency), LLM check catches missed emergencies
+    if not dec.is_emergency and not confirmed_past:
+        if llm_emergency_check(symptoms, gemini_client, groq_client) is True:
+            dec = Decision(tier=2, matched="llm-safety-layer")
+    # 2. If rule returned tier 2 (non-crisis, non-snakebite), LLM confirm checks for false alarms
+    elif dec.tier == 2 and not dec.snakebite and not dec.crisis:
         confirmed = llm_emergency_confirm(symptoms, gemini_client, groq_client)
         if not confirmed:
             dec = Decision(tier=0, matched=dec.matched)
@@ -1156,8 +1158,8 @@ def parse_indian_prescription_shorthand(text: str) -> list[dict]:
         has_freq = bool(num_match or any(t in FREQ_TOKENS for t in tokens_upper))
         has_dose = bool(dose)
 
-        # Only accept shorthand lines that have a dose plus a frequency token (or explicit SOS/PRN)
-        if not (has_dose and has_freq) and not ("SOS" in tokens_upper or "PRN" in tokens_upper):
+        # Only accept shorthand lines that have BOTH a dose AND a frequency token
+        if not (has_dose and has_freq):
             continue
 
         name_part = line[:dose_match.start()].strip() if dose_match else " ".join(line.split()[:2])
@@ -1166,9 +1168,6 @@ def parse_indian_prescription_shorthand(text: str) -> list[dict]:
         name = re.sub(r'^(?:Tab(?:let)?|Cap(?:sule)?|Inj(?:ection)?|Syp|Syrup)\.?\s+', '', name, flags=re.IGNORECASE).strip()
         if not name or len(name) < 2:
             continue
-
-        num_match = re.search(r'\b([0-2])\s*[-–/]\s*([0-2])\s*[-–/]\s*([0-2])(?:\s*[-–/]\s*([0-2]))?\b', line)
-        tokens_upper = re.findall(r'\b[A-Za-z]+\b', line.upper())
 
         morning = False
         afternoon = False
@@ -1538,8 +1537,8 @@ def speak_text(text: str, lang_code: str = "en-IN"):
     cleaned = _clean_for_tts(text)
     # Split into sentences for reliable playback (some browsers drop after ~200 words)
     sentences = re.split(r"(?<=[.!?।])\s+", cleaned)
-    # Build JS array of utterances
-    utterances_js = ", ".join(json.dumps(s) for s in sentences if s.strip())
+    # Build JS array of utterances — escape < as \u003c to prevent </script> premature breakout
+    utterances_js = ", ".join(json.dumps(s).replace("<", "\\u003c") for s in sentences if s.strip())
     html = f"""
     <button id="av_tts_play" onclick="avSpeak()" style="
         padding:8px 18px;font-size:14px;border-radius:6px;

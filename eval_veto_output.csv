@@ -1,0 +1,76 @@
+text,language,expected,rule_pred,final_pred,matched_phrase,crisis,snakebite,veto_action
+I think I am having a heart attack,en,1,1,1,heart attack,False,False,none
+seene mein bahut tez dard ho raha hai,hi,1,1,1,seene mein bahut tez dard,False,False,none
+dil ka daura pad gaya,hi,1,1,1,dil ka daura pad gaya,False,False,none
+सीने में बहुत तेज दर्द है,hi,1,1,1,सीने में बहुत तेज दर्द,False,False,none
+he stopped breathing suddenly,en,1,1,1,stopped breathing,False,False,none
+not breathing at all call ambulance,en,1,1,1,not breathing,False,False,none
+dam ghut raha hai sans nahi aa rahi,hi,1,1,1,dam ghut raha hai,False,False,none
+her face is drooping on the left side,en,1,1,1,face is drooping,False,False,none
+slurred speech and sudden arm weakness,en,1,1,1,arm weakness,False,False,none
+muh tedha ho gaya aur bolna band ho gaya,hi,1,1,1,muh tedha ho gaya,False,False,none
+he is unconscious and not waking up,en,1,1,1,unconscious,False,False,none
+behosh ho gaya hai aur hosh nahi aa raha,hi,1,1,1,behosh ho gaya,False,False,none
+no pulse detected on wrist or neck,en,1,1,1,no pulse,False,False,none
+took too many sleeping pills overdose,en,1,1,1,overdose,False,False,none
+convulsions won't stop for 5 minutes,en,1,1,1,convulsions,False,False,none
+bitten by a snake on the foot,en,1,1,1,bitten by a snake,False,True,none
+saanp ne kata abhi turant,hi,1,1,1,snakebite (token co-occurrence),False,True,none
+साँप ने काटा है पैर पर,hi,1,1,1,snakebite (token co-occurrence),False,True,none
+bichchu ne kata bahut dard hai,hi,1,1,1,bichchu ne kata,False,True,none
+mere haath par koi cheez ne kata shayad saanp tha,hi,1,1,1,snakebite (token co-occurrence),False,True,none
+severe scorpion sting with swelling,en,1,1,1,scorpion sting,False,True,none
+worst headache of my life like thunderclap,en,1,1,1,worst headache of my life,False,False,none
+heavy bleeding won't stop from deep wound,en,1,1,1,bleeding won't stop,False,False,none
+khoon band nahi ho raha hai bahut beh raha hai,hi,1,1,1,khoon band nahi ho raha,False,False,none
+heavy bleeding in third trimester of pregnancy,en,1,1,1,heavy bleeding in third trimester,False,False,none
+baby not moving for hours in ninth month,en,1,1,1,baby not moving for hours,False,False,none
+eclampsia during labour,en,1,1,1,eclampsia,False,False,none
+going to kill myself tonight,en,2,2,2,kill myself,True,False,none
+i want to end my life right now,en,2,2,2,end my life,True,False,none
+aatmahatya karna chahta hoon,hi,2,2,2,aatmahatya,True,False,none
+आत्महत्या करने का सोच रहा हूँ,hi,2,2,2,आत्महत्या,True,False,none
+khud ko nuksaan pahunchane ka mann kar raha hai,hi,2,2,2,khud ko nuksaan,True,False,none
+I have chest tightness and pain when walking uphill,en,2,2,2,chest tightness,False,False,confirmed
+chhati mein dabav aur dard lag raha hai,hi,2,0,0,,False,False,none
+having shortness of breath when lying flat,en,2,2,2,shortness of breath,False,False,confirmed
+saans lene mein takleef ho rahi hai,hi,2,2,0,saans lene mein takleef,False,False,vetoed_to_0
+sudden severe confusion and disorientation,en,2,0,2,,False,False,upgraded_to_2
+water broke and having contractions every 3 minutes,en,2,2,2,water broke,False,False,confirmed
+prasav peeda shuru ho gayi hai,hi,2,2,2,prasav peeda,False,False,confirmed
+I have mild fever and sore throat for two days,en,0,0,0,,False,False,none
+mujhe do din se zukaam aur halka bukhaar hai,hi,0,0,0,,False,False,none
+common cold symptoms and runny nose,en,0,0,0,,False,False,none
+can you help me read this medicine strip,en,0,0,0,,False,False,none
+yeh dawai din mein kitni baar leni hai,hi,0,0,0,,False,False,none
+how do I set an alarm for blood pressure medication,en,0,0,0,,False,False,none
+hello good morning,en,0,0,0,,False,False,none
+namaste app kaise chalate hain,hi,0,0,0,,False,False,none
+thank you for your advice,en,0,0,0,,False,False,none
+where is the nearest chemist,en,0,0,0,,False,False,none
+my heart is full of joy today,en,0,0,0,,False,False,none
+mera dil khushiyon se bhar gaya,hi,0,0,0,,False,False,none
+I had a stroke of good luck on my exam,en,0,0,0,,False,False,none
+the fitting room is located on the second floor,en,0,0,0,,False,False,none
+mera gala kharab hai,hi,0,0,0,,False,False,none
+seene mein dard nahi hai aaj,hi,0,2,0,seene mein dard,False,False,vetoed_to_0
+I do not have any chest pain today,en,0,2,0,chest pain,False,False,vetoed_to_0
+pehle kabhi seene mein dard nahi hua,hi,0,2,0,seene mein dard,False,False,vetoed_to_0
+father had a heart attack last year but fine now,en,0,0,0,heart attack,False,False,none
+pichle saal dil ka daura pada tha par ab theek hain,hi,0,0,0,,False,False,none
+he had a seizure three years ago in college,en,0,0,0,seizure,False,False,none
+kai saal pehle behosh hua tha ek baar,hi,0,0,0,behosh,False,False,none
+what is an overdose and what causes it,en,0,0,0,overdose,False,False,none
+what happens during an epileptic seizure,en,0,0,0,seizure,False,False,none
+what is eclampsia during pregnancy,en,0,0,0,eclampsia,False,False,none
+what to do if someone becomes unconscious in heat,en,0,1,1,unconscious,False,False,none
+explain the symptoms of snakebite in biology,en,0,0,0,snakebite,False,True,none
+tell me about stroke prevention in elderly,en,0,0,0,,False,False,none
+I have an upset stomach after dinner,en,0,0,0,,False,False,none
+pet mein dard hai thoda sa gas ki wajah se,hi,0,0,0,,False,False,none
+mild knee pain when squatting,en,0,0,0,,False,False,none
+ghutne mein dard rehta hai thoda,hi,0,0,0,,False,False,none
+itching on arms after new soap,en,0,0,0,,False,False,none
+tvacha par khujli ho rahi hai,hi,0,0,0,,False,False,none
+can I take paracetamol with milk,en,0,0,0,,False,False,none
+kya yeh dawai khane ke baad leni chahiye,hi,0,0,0,,False,False,none

@@ -22,35 +22,38 @@
 
 ## 📊 Evaluation Results (October 2026)
 
-### Evaluation Protocol & Benchmark Provenance
-- **Development Set (In-Sample, N=75):** The dataset `eval_emergency.csv` (45 English, 30 Hindi) was used while developing and iteratively tuning the detector keyword lists. Therefore, metrics on this set are **in-sample** benchmarks.
-- **Held-Out Test Set (Out-of-Sample, N=40):** To evaluate out-of-sample generalization, a fresh held-out set (`eval_heldout.csv`: 25 English, 15 Hindi) of authentic novel patient expressions was authored without referencing the detector phrase lists. Running the offline rule engine on this held-out set demonstrates the expected boundary of keyword matching: 18/18 true negatives are preserved (100% precision, zero false alarms), but recall is lower on unseen phrasings (Tier-1: 15.4%, Tier-2: 0%), illustrating why AuraVoice integrates live LLM confirmation in the full app.
-- **Evaluation Harness vs. Live App Behavior:**
-  - In `eval_emergency.py`, the offline test harness maps strong past-tense utterances (*"had a heart attack last week"*) and informational queries to non-alerts (predicted tier 0).
-  - In the interactive Streamlit app, both cases trigger safety UI: past-tense events prompt a confirmation check (*"Is this happening RIGHT NOW?"*), and informational queries render the emergency alert banner with a one-click dismissal button (*"Not an emergency"*).
-- **Offline Reproducibility:** Both benchmarks run completely offline with zero API keys:
-  ```cmd
-  python eval_emergency.py eval_emergency.csv
-  python eval_emergency.py eval_heldout.csv
-  ```
+### Rigorous Evaluation: In-Sample Development vs. Out-of-Sample Held-Out Benchmarks
+To maintain clinical and technical integrity, **in-sample figures are never headlined alone**. Keyword matching exhibits a steep drop on unseen vocabulary, which is why AuraVoice runs an **LLM safety layer on every input** in the production app.
 
-### Development Set Performance (`eval_emergency.csv`, N=75)
-| Metric | Result | 95% Wilson CI | Notes |
-|---|---|---|---|
-| **Tier-1 Recall (CALL NOW) — Overall** | **96.3%** (26/27) | [81.7% – 99.3%] | 1 missed case: *"heavy bleeding in third trimester of pregnancy"* |
-| **Tier-1 Recall (CALL NOW) — Hindi** | **100.0%** (11/11) | [74.1% – 100.0%] | Devanagari + Roman transliteration |
-| **Tier-1 Recall (CALL NOW) — English** | **93.8%** (15/16) | [71.7% – 98.9%] | Cardiac, stroke, respiratory, overdose, seizure |
-| **Tier-2 Recall (URGENT) — Overall** | **83.3%** (10/12) | [55.2% – 95.3%] | Chest tightness, contractions, crisis phrases |
-| **Any-Alert Precision (Rule-Only)** | **90.0%** (36/40) | [76.9% – 96.0%] | Offline rule engine (4 safe-by-design negation/metaphor alerts) |
-| **True Negatives (Rule Engine)** | **88.9%** (32/36) | [74.7% – 95.6%] | Metaphors, routine symptoms, past events |
+| Benchmark Set | Evaluation Type | N | Tier-1 Recall | Tier-2 Recall | Precision | True Negatives | Clinical Takeaway |
+|---|---|---|---|---|---|---|---|
+| **Held-Out Test Set 1 (`eval_heldout.csv`)** | Out-of-Sample (Blind) | 40 | **15.4%** (2/13) | **0.0%** (0/9) | **100.0%** (4/4) | **100.0%** (18/18) | Pure keyword generalization boundary on unseed phrases |
+| **Held-Out Test Set 2 (`eval_heldout_set3.csv`)** | Out-of-Sample (Fresh) | 49 | **33.3%** (6/18) | **28.6%** (4/14) | **100.0%** (10/10) | **100.0%** (17/17) | Broadened rules capture key synonyms with 0 false alarms |
+| **Development Benchmark (`eval_emergency.csv`)** | In-Sample (Tuned) | 75 | **100.0%** (27/27) | **83.3%** (10/12) | **86.0%** (37/43) | **83.3%** (30/36) | In-sample performance during rule authoring |
 
-### Fresh Held-Out Test Set Performance (`eval_heldout.csv`, N=40)
-| Metric | Result | 95% Wilson CI | Notes |
-|---|---|---|---|
-| **Tier-1 Recall (CALL NOW)** | **15.4%** (2/13) | [4.3% – 42.2%] | Unseen synonym phrasings |
-| **Tier-2 Recall (URGENT)** | **0.0%** (0/9) | [0.0% – 30.1%] | Unseen colloquial urgent phrasings |
-| **Any-Alert Precision** | **100.0%** (4/4) | [51.0% – 100.0%] | Zero false alarms on negative samples |
-| **True Negatives** | **100.0%** (18/18) | [82.4% – 100.0%] | Routine symptoms, past events, idioms correctly cleared |
+---
+
+### Real Model Veto & Dual-Layer Safety Evaluation (`eval_llm_veto.py`)
+To test the live application pipeline where the rule engine is combined with real model calls (`llm_emergency_confirm` and `llm_emergency_check` using Gemini 3.6 Flash / Groq):
+
+- **False Alarm Suppression:** The LLM veto inspected 8 candidate Tier-2 alerts, successfully vetoing 3 conversational negations (*"seene mein dard nahi hai aaj"*), boosting any-alert precision from **90.2% (37/41)** to **97.4% (37/38)**.
+- **Transparent Adverse Suppression Disclosure:** Precision alone hides sensitivity loss. The LLM veto erroneously removed **1 true Tier-2 emergency** (suppressed to non-alert), demonstrating the exact real-world trade-off of alert-fatigue filtering.
+- **Second-Layer Safety Check:** On every input where the rule engine predicts Tier 0, `llm_emergency_check` evaluates whether an acute crisis was missed, ensuring coverage beyond keyword dictionaries.
+- **Safety Invariant:** Tier-1 (CALL NOW), Crisis/self-harm, and Snakebite are **hard-locked** and can **never** be downgraded by the LLM.
+
+### Offline & Live Benchmark Reproduction
+```cmd
+# 1. Deterministic offline rule evaluation (zero API keys required)
+python eval_emergency.py eval_heldout.csv
+python eval_emergency.py eval_heldout_set3.csv
+python eval_emergency.py eval_emergency.csv
+
+# 2. Live LLM Veto & Safety evaluation (requires API keys in secrets.toml or environment)
+python eval_llm_veto.py eval_emergency.csv
+```
+
+> **Evaluation Harness vs. Live App Behavior:**
+> In `eval_emergency.py`, the offline harness maps strong past-tense utterances (*"had a heart attack last week"*) and informational queries to non-alerts (predicted tier 0). In the interactive Streamlit app, both cases trigger safety UI: past-tense events prompt a confirmation check (*"Is this happening RIGHT NOW?"*), and informational queries render the emergency alert banner with a one-click dismissal button (*"Not an emergency"*).
 
 ---
 
@@ -403,4 +406,4 @@ MIT License — free to use, modify, and distribute with attribution.
 
 ---
 
-*Built with ❤️ · Inclusive Technology Track*
+*Built with ❤️ · AuraVoice Inclusive Health Assistant*
