@@ -160,6 +160,9 @@ TIER2_PHRASES: list[tuple[str, str]] = [
     ("severe bleeding", "en"), ("poisoning", "en"),
     ("want to die", "en"), ("kill myself", "en"), ("suicide", "en"),
     ("self harm", "en"), ("no reason to live", "en"),
+    ("not want to live", "en"), ("dont want to live", "en"),
+    ("do not want to live", "en"), ("tired of living", "en"),
+    ("give up on life", "en"), ("wish i was dead", "en"), ("wish i were dead", "en"),
     ("labour pain", "en"), ("water broke", "en"),
     ("seene mein dard", "hi"), ("सीने में दर्द", "hi"),
     ("saans nahi aa rahi", "hi"), ("saans lene mein takleef", "hi"),
@@ -183,15 +186,20 @@ TIER2_PHRASES: list[tuple[str, str]] = [
 # Crisis / self-harm — NEVER downgraded by LLM confirm; always fires tier-2 minimum
 CRISIS_PHRASES: list[str] = [
     # English
-    "suicide", "want to die", "kill myself", "going to kill myself",
+    "suicide", "suicidal", "want to die", "kill myself", "going to kill myself",
     "about to end my life", "pills to die", "taking pills to die",
     "self harm", "no reason to live", "end my life", "hurt myself", "hurting myself",
+    "not want to live", "dont want to live", "don't want to live", "do not want to live",
+    "tired of living", "give up on life", "better off dead", "wish i were dead", "wish i was dead",
+    "end it all", "take my own life", "cannot go on living", "can't go on living",
     # Hindi – Devanagari
-    "आत्महत्या", "मरना चाहता हूँ", "मरना चाहती हूँ", "खुद को नुकसान",
+    "आत्महत्या", "मरना चाहता हूँ", "मरना चाहती हूँ", "खुद को नुकसान", "खुदकुशी",
+    "जीना नहीं चाहता", "जीना नहीं चाहती", "जीने की इच्छा नहीं", "जान देना चाहता",
     # Hindi – transliteration
-    "aatmahatya", "marna chahta hoon", "marna chahti hoon",
-    "jaan dena chahta", "jaan de doonga", "khud ko nuksaan",
+    "aatmahatya", "marna chahta hoon", "marna chahti hoon", "marna chahta", "marna chahti",
+    "jaan dena chahta", "jaan de doonga", "khud ko nuksaan", "khudkushi",
     "marne ki koshish", "khud ko maar loonga",
+    "jeena nahi chahta", "jeena nahi chahti", "jeene ka mann nahi", "zindagi se tang",
     # Regional
     "marab chahta",
 ]

@@ -149,8 +149,10 @@ GLOBAL_HOTLINES = {
 SAFE_FALLBACK_RESPONSE = (
     "⚠️ I'm having trouble connecting right now.\n\n"
     "Please consult a qualified healthcare professional.\n\n"
-    "If this is an emergency, call **112** (India: **108** for ambulance, "
-    "**14416** for mental health crisis).\n\n"
+    "If this is an emergency, please reach out directly:\n"
+    "- 🚨 **112** (Emergency: Police / Fire / Medical)\n"
+    "- 🚑 **108** (Ambulance)\n"
+    "- 💙 **14416** ([Tele-MANAS](tel:14416) — 24/7 National Mental Health Helpline, toll-free)\n\n"
     "⚠️ This is not a medical diagnosis. Please consult a qualified doctor."
 )
 
@@ -573,7 +575,7 @@ def call_gemini(
                 time.sleep(2 ** attempt)
                 continue
             log.error("Gemini failed (attempt %d): %s", attempt, exc)
-            st.session_state["last_error"] = "Gemini error (check terminal logs)"
+            st.session_state["last_error"] = f"Gemini: {exc}"
             return None
     return None
 
@@ -608,7 +610,7 @@ def call_groq(
                 time.sleep(2 ** attempt)
                 continue
             log.error("Groq failed (attempt %d): %s", attempt, exc)
-            st.session_state["last_error"] = "Groq error (check terminal logs)"
+            st.session_state["last_error"] = f"Groq: {exc}"
             return None
     return None
 
@@ -1732,13 +1734,13 @@ def render_sidebar():
         )
         st.divider()
 
-        # ── API Keys (hidden when in production via AURAVOICE_PROD env flag or secret) ──
-        is_prod = is_prod_mode()
-        if not is_prod:
-            with st.expander("🔑 API Keys (Dev)", expanded=not st.session_state["api_keys_set"]):
+        # ── API Keys (hidden when in production AND keys are successfully loaded) ──
+        hide_keys = is_prod_mode() and st.session_state.get("api_keys_set", False)
+        if not hide_keys:
+            with st.expander("🔑 API Keys", expanded=not st.session_state["api_keys_set"]):
                 st.info(
-                    "Keys load from `st.secrets` on Streamlit Cloud. "
-                    "Enter here for local dev only.",
+                    "Keys load automatically from `st.secrets` in Cloud deployment. "
+                    "If not configured in secrets, enter your free Gemini or Groq key below.",
                     icon="ℹ️",
                 )
                 gemini_input = st.text_input(
@@ -2514,22 +2516,18 @@ def main():
     render_hero()
 
     if not st.session_state["api_keys_set"]:
-        if not is_prod_mode():
-            st.warning(
-                "👈 Enter API keys in the sidebar (expand 🔑 API Keys) and click **Connect**.",
-                icon="🔑",
-            )
-            st.info(
-                "Gemini (free): [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey)\n\n"
-                "Groq (free): [console.groq.com/keys](https://console.groq.com/keys)",
-                icon="🚀",
-            )
-        else:
-            st.warning(
-                "API keys are not configured in environment or secrets. "
-                "Please ensure GEMINI_API_KEY and GROQ_API_KEY are configured in your Streamlit secrets.",
-                icon="🔑",
-            )
+        st.warning(
+            "🔑 **API Keys Not Connected**: AuraVoice requires a free Google Gemini or Groq API key to answer general queries.\n\n"
+            "- 👉 **To connect immediately**: Enter your key in the sidebar under **🔑 API Keys** and click **🔗 Connect & Test APIs**.\n"
+            "- ☁️ **For permanent deployment on Streamlit Cloud**: Go to **Manage app** → **⚙️ Settings** → **Secrets** and paste:\n"
+            "```toml\n"
+            "AURAVOICE_PROD = \"1\"\n"
+            "GEMINI_API_KEY = \"your-gemini-api-key\"\n"
+            "GROQ_API_KEY   = \"your-groq-api-key\"\n"
+            "```\n"
+            "*(Get free keys at [aistudio.google.com](https://aistudio.google.com/app/apikey) or [console.groq.com](https://console.groq.com/keys))*",
+            icon="🔑",
+        )
 
     tab1, tab2, tab3, tab4, tab5 = st.tabs([
         "💬 Symptoms",

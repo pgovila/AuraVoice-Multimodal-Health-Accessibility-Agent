@@ -178,6 +178,21 @@ class TestCrisis:
         assert d.tier >= 2
         assert d.crisis is True
 
+    def test_do_not_want_to_live_anymore(self):
+        d = classify("i do not want to live anymore")
+        assert d.tier >= 2
+        assert d.crisis is True
+
+    def test_tired_of_living(self):
+        d = classify("I am tired of living")
+        assert d.tier >= 2
+        assert d.crisis is True
+
+    def test_jeene_ki_ichha_nahi(self):
+        d = classify("अब जीने की इच्छा नहीं रही")
+        assert d.tier >= 2
+        assert d.crisis is True
+
 
 # ---------------------------------------------------------------------------
 # TIER-0  (must not fire)
