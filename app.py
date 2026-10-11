@@ -10,7 +10,7 @@ Architecture
 - Fallback  : Groq Qwen3.8-27b (text-only) via Groq SDK
 - STT       : SpeechRecognition (language-aware) + streamlit-mic-recorder
 - Safety    : Tiered multilingual emergency detection (no false-suppress) → LLM confirm
-- Privacy   : No PII stored; task-scoped context; DPDP 2023 aligned
+- Privacy   : No PII stored; task-scoped context; browser session only
 
 Module map
 ----------
@@ -32,14 +32,13 @@ Module map
 
 # ── stdlib ────────────────────────────────────────────────────────────────────
 import hashlib
-import html as html_lib
 import io
 import json
 import logging
 import os
 import re
 import time
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from typing import Optional
 
 # ── emergency module (pure Python — no Streamlit, safe to import everywhere) ──
@@ -122,100 +121,6 @@ TTS_LANG_CODES = {
     "Punjabi":    "pa-IN",
 }
 
-# ---------------------------------------------------------------------------
-# TIERED EMERGENCY PHRASES
-# Tier 1 = CALL NOW (unambiguous life-threat)
-# Tier 2 = URGENT (serious, see doctor today)
-# NO negation suppression — a false negative here costs lives.
-# Generic phrases ("help me", "emergency", "my heart") are tier 2 or removed.
-# ---------------------------------------------------------------------------
-TIER1_PHRASES: list[tuple[str, str]] = [
-    # English – cardiac arrest / MI
-    ("heart attack", "en"), ("cardiac arrest", "en"), ("crushing chest pain", "en"),
-    ("chest pain radiating", "en"), ("pain in left arm", "en"),
-    # English – respiratory arrest
-    ("not breathing", "en"), ("stopped breathing", "en"),
-    ("cannot breathe at all", "en"), ("airway blocked", "en"), ("choking", "en"),
-    # English – stroke (FAST signs)
-    ("face drooping", "en"), ("arm weakness suddenly", "en"), ("speech slurred", "en"),
-    ("sudden vision loss", "en"), ("worst headache of my life", "en"),
-    # English – severe bleeding / shock
-    ("bleeding won't stop", "en"), ("bleeding profusely", "en"),
-    ("unconscious", "en"), ("unresponsive", "en"), ("not waking up", "en"),
-    ("no pulse", "en"),
-    # English – poisoning / overdose
-    ("overdose", "en"), ("swallowed poison", "en"), ("took too many pills", "en"),
-    # English – seizure ongoing
-    ("seizure won't stop", "en"), ("convulsions", "en"),
-    # English – mental health (active crisis)
-    ("going to kill myself", "en"), ("about to end my life", "en"),
-    ("taking pills to die", "en"),
-    # English – obstetric emergency
-    ("eclampsia", "en"), ("baby not moving for hours", "en"),
-    ("heavy bleeding in pregnancy", "en"),
-    # English – envenomation
-    ("bitten by snake", "en"), ("snakebite", "en"), ("scorpion sting severe", "en"),
-    # Hindi – cardiac
-    ("dil ka daura pad gaya", "hi"), ("dil ka dora", "hi"),
-    ("seene mein bahut tez dard", "hi"), ("chhati mein tez dard", "hi"),
-    ("seene mein dard aa raha hai", "hi"), ("दिल का दौरा", "hi"),
-    ("सीने में बहुत तेज दर्द", "hi"),
-    # Hindi – respiratory
-    ("saans bilkul nahi aa rahi", "hi"), ("dam ghut gaya", "hi"),
-    ("dam ghut raha hai", "hi"), ("दम घुट रहा है", "hi"),
-    ("sans band ho gayi", "hi"),
-    # Hindi – stroke
-    ("laqwa pad gaya", "hi"), ("muh tedha ho gaya", "hi"),
-    ("haath achanak kaam nahi kar raha", "hi"), ("bolna band ho gaya", "hi"),
-    # Hindi – bleeding
-    ("khoon bahut bahut aa raha hai", "hi"), ("khoon band nahi ho raha", "hi"),
-    ("behosh ho gaya", "hi"), ("होश नहीं है", "hi"),
-    # Hindi – mental health
-    ("marne ki koshish kar raha hoon", "hi"), ("jaan de doonga", "hi"),
-    ("khud ko maar loonga", "hi"),
-    # Hindi – obstetric
-    ("bachcha hil nahi raha kal se", "hi"), ("pani toot gaya", "hi"),
-    ("prasav mein bahut khoon", "hi"),
-    # Hindi – snakebite
-    ("saanp ne kata abhi", "hi"), ("bichchu ne kata", "hi"),
-    # Bhojpuri
-    ("seena mein bahut dard ba", "bh"), ("dam bilkul naikhe", "bh"),
-    ("behosh ba", "bh"), ("saanp katlis", "bh"), ("marab chahta hai", "bh"),
-    # Awadhi
-    ("sina mein bahut dard", "aw"), ("dam naahin aawat", "aw"),
-    # Bengali
-    ("বুকে অনেক ব্যথা", "bn"), ("শ্বাস নিতে পারছি না একদম", "bn"),
-    ("bukhe onek byatha", "bn"),
-    # Tamil
-    ("நெஞ்சில் மிகவும் வலி", "ta"), ("மூச்சே வரவில்லை", "ta"),
-    # Telugu
-    ("ఛాతీలో చాలా నొప్పి", "te"), ("శ్వాస రావడం లేదు", "te"),
-]
-
-TIER2_PHRASES: list[tuple[str, str]] = [
-    # These warrant urgent advice but not a 112 call immediately
-    ("chest pain", "en"), ("chest tightness", "en"),
-    ("shortness of breath", "en"), ("difficulty breathing", "en"),
-    ("severe headache", "en"), ("sudden confusion", "en"),
-    ("seizure", "en"), ("fitting", "en"),
-    ("severe bleeding", "en"), ("poisoning", "en"),
-    ("want to die", "en"), ("kill myself", "en"), ("suicide", "en"),
-    ("self harm", "en"), ("no reason to live", "en"),
-    ("labour pain", "en"), ("water broke", "en"),
-    ("snake bite", "en"), ("scorpion sting", "en"),
-    ("seene mein dard", "hi"), ("सीने में दर्द", "hi"),
-    ("saans nahi aa rahi", "hi"), ("saans lene mein takleef", "hi"),
-    ("behosh", "hi"), ("hosh nahi", "hi"),
-    ("marna chahta hoon", "hi"), ("marna chahti hoon", "hi"),
-    ("jaan dena chahta", "hi"),
-    ("saanp ne kata", "hi"), ("saanp ka dank", "hi"),
-    ("prasav peeda", "hi"), ("bachcha hil nahi raha", "hi"),
-    ("seena mein dard ba", "bh"), ("dam naikhe", "bh"),
-    ("bukhe byatha", "bn"), ("shash nite koshto", "bn"),
-    ("நெஞ்சு வலி", "ta"), ("மூச்சு சிரமம்", "ta"),
-    ("ఛాతీ నొప్పి", "te"), ("శ్వాస తీసుకోవడం కష్టం", "te"),
-]
-
 # Verified India hotlines — verify against MoHFW / NHA before deployment
 # Last checked against publicly available sources: Oct 2026
 INDIA_HOTLINES = {
@@ -288,7 +193,7 @@ def check_image_quality(img: Image.Image) -> dict:
     brightness = ImageStat.Stat(gray).mean[0]
     if brightness < 40:
         issues.append("too_dark")
-    elif brightness > 215:
+    elif brightness > 235:
         issues.append("overexposed")
 
     # Size
@@ -371,6 +276,7 @@ def _crisis_copy(region: str = "India") -> str:
 def render_emergency_alert(
     dec: "EmDecision",
     region: str = "India",
+    msg_id: str = "",
 ) -> None:
     """
     Render tiered emergency banner from a Decision object.
@@ -378,7 +284,7 @@ def render_emergency_alert(
     - Crisis (dec.crisis): warm blue Tele-MANAS / regional crisis copy.
     - Tier 1: red call-now (112/108 tel: links only).
     - Tier 2: orange urgent.
-    - Info query (dec.info_query): shows a softer banner + "Not an emergency" escape.
+    If dec.info_query is True, show the alert and add a "Not an emergency" dismiss button below it.
     Caller must also store the alert in chat_history for rerun persistence.
     """
     em_num, amb_num = _REGION_EMERGENCY_NUMBERS.get(region, ("112", "112"))
@@ -393,23 +299,6 @@ def render_emergency_alert(
             f"{_crisis_copy(region)}",
             icon="💙",
         )
-        return
-
-    if dec.info_query:
-        c1, c2 = st.columns([4, 1])
-        with c1:
-            st.info(
-                f"ℹ️ **Informational query noted** — Medical explanation provided below.\n\n"
-                f"If this is a real acute event happening right now, call 📞 [**{em_num}**](tel:{em_num}) immediately.",
-                icon="ℹ️",
-            )
-        with c2:
-            if st.button("Dismiss\n(Not an emergency)", key=f"dismiss_info_{abs(hash(dec.matched)) % 100000}", use_container_width=True):
-                st.session_state["chat_history"] = [
-                    m for m in st.session_state.get("chat_history", [])
-                    if not (m.get("role") == "alert" and m.get("info_query"))
-                ]
-                st.rerun()
         return
 
     if dec.tier == 1:
@@ -435,14 +324,26 @@ def render_emergency_alert(
             icon="⚠️",
         )
 
+    # If flagged as info_query, add dismiss button directly below the banner
+    if dec.info_query:
+        btn_key = f"dismiss_{msg_id}" if msg_id else f"dismiss_{abs(hash(dec.matched)) % 100000}"
+        if st.button("Not an emergency", key=btn_key):
+            st.session_state["chat_history"] = [
+                m for m in st.session_state.get("chat_history", [])
+                if m.get("id") != msg_id and not (m.get("role") == "alert" and m.get("info_query"))
+            ]
+            if st.session_state.get("audio_alert", {}).get("info_query"):
+                st.session_state["audio_alert"] = None
+            st.rerun()
 
-def llm_emergency_confirm(text: str, gemini_client, groq_client) -> bool:
+
+def llm_emergency_check(text: str, gemini_client, groq_client) -> Optional[bool]:
     """
-    Second-layer LLM yes/no check — ONLY used for tier-2 non-crisis, non-snakebite.
-    NEVER called for tier-1, crisis, or snakebite (those are never downgraded).
-
-    Safety rule: ONLY a clean "NO" downgrades. Anything else = fail-safe True (urgent).
-    Uses 64 output tokens so thinking models have room to output the word.
+    Second-layer LLM check.
+    Returns:
+      True  -> explicitly confirmed YES
+      False -> explicitly confirmed NO
+      None  -> unavailable or ambiguous
     """
     prompt = (
         "Does the following text describe a medical emergency or urgent health crisis "
@@ -457,8 +358,24 @@ def llm_emergency_confirm(text: str, gemini_client, groq_client) -> bool:
                 cleaned = _strip_think_blocks(raw).strip().strip(".").lower()
                 if cleaned == "no":
                     return False
-                return True   # "yes", partial, garbled → fail-safe
-    return True  # LLM unavailable → assume urgent
+                if cleaned == "yes":
+                    return True
+                return None
+    return None
+
+
+def llm_emergency_confirm(text: str, gemini_client, groq_client) -> bool:
+    """
+    Second-layer LLM yes/no check — ONLY used for tier-2 non-crisis, non-snakebite.
+    NEVER called for tier-1, crisis, or snakebite (those are never downgraded).
+
+    Safety rule: ONLY an explicit False (clean 'NO') downgrades. Anything else = fail-safe True (urgent).
+    Uses 64 output tokens so thinking models have room to output the word.
+    """
+    res = llm_emergency_check(text, gemini_client, groq_client)
+    if res is False:
+        return False
+    return True
 
 
 def _call_gemini_raw(client, prompt: str) -> Optional[str]:
@@ -933,6 +850,10 @@ def process_audio_input(
 
     dec = detect_symptom_emergency(transcript, gemini_client, groq_client, user_profile)
 
+    if dec.tier == -1:
+        canned = "🚨 Potential emergency reported. Please confirm if this is happening right now."
+        return transcript, canned, dec
+
     # Fold crisis into tier (minimum tier 2)
     if dec.crisis:
         dec.tier = max(dec.tier, 2)
@@ -947,7 +868,7 @@ def process_audio_input(
             "AuraVoice is here with you. Please reach out to a counsellor right now."
         )
         return transcript, canned, dec
-    if dec.tier == 1 and not dec.info_query:
+    if dec.tier == 1:
         canned = (
             "🚨 **EMERGENCY DETECTED. Call 📞 112 / 🚑 108 immediately.**\n\n"
             "Do not wait for AI guidance."
@@ -987,7 +908,7 @@ def detect_symptom_emergency(
     """
     Detect emergency status for symptoms BEFORE generating or streaming guidance.
     - Pure classification via emergency.py
-    - Devanagari LLM classifier check if rule engine finds tier 0
+    - Devanagari LLM classifier check if rule engine finds tier 0 (upgrades only on explicit True)
     - Strong past-tense check: sentinel tier -1 if not confirmed_past
     - confirmed_past=True: bypasses past-tense sentinel and downgrades tier 1 to 0
     - Tier-2 non-crisis/non-snakebite: second-layer LLM confirmation
@@ -995,9 +916,9 @@ def detect_symptom_emergency(
     from emergency import Decision
     dec = _em_classify(symptoms)
 
-    # Devanagari recall boost: if Devanagari is present and rule returned 0, use LLM
+    # Devanagari recall boost: if Devanagari is present and rule returned 0, upgrade ONLY on explicit True
     if is_devanagari(symptoms) and not dec.is_emergency:
-        if llm_emergency_confirm(symptoms, gemini_client, groq_client):
+        if llm_emergency_check(symptoms, gemini_client, groq_client) is True:
             dec = Decision(tier=2, matched="llm-classifier (Devanagari)")
 
     # Past-event confirmation: user confirmed it was in the past
@@ -1030,7 +951,7 @@ def generate_symptom_response(
 ) -> str:
     """
     Generate triage response based on Decision.
-    If snakebite, crisis, or hard tier-1 (non-info), returns canned guidance immediately.
+    If snakebite, crisis, or hard tier-1, returns canned guidance immediately.
     If info query, tier-2, or non-emergency, calls LLM (streamed into stream_placeholder).
     """
     region = user_profile.get("region", "India")
@@ -1044,7 +965,7 @@ def generate_symptom_response(
             "AuraVoice is here with you. Please reach out to a counsellor right now."
         )
 
-    if dec.tier == 1 and not dec.info_query:
+    if dec.tier == 1:
         return (
             "🚨 **This sounds like a medical emergency.**\n\n"
             "Call 📞 [**112**](tel:112) or 🚑 [**108**](tel:108) immediately. "
@@ -1215,16 +1136,34 @@ def parse_indian_prescription_shorthand(text: str) -> list[dict]:
     - HS (bedtime), SOS/PRN (as needed)
     - AC (before meals), PC (after meals)
     Ticks schedule boxes only when explicitly stated.
+    Only accepts shorthand lines with a dose plus frequency token (or SOS/PRN).
+    Strips Tab/Cap/Inj/Syp prefixes.
     """
     extracted = []
     lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+    FREQ_TOKENS = frozenset([
+        "TDS", "TID", "BD", "BID", "QDS", "QID", "OD", "QD", "HS", "SOS", "PRN"
+    ])
     for line in lines:
         if line.startswith("#") or line.startswith("|") or line.lower().startswith("rx"):
             continue
         dose_match = re.search(r'\b(\d+(?:\.\d+)?\s*(?:mg|mcg|g|ml|tablets?|caps?))\b', line, re.IGNORECASE)
         dose = dose_match.group(1) if dose_match else ""
+
+        num_match = re.search(r'\b([0-2])\s*[-–/]\s*([0-2])\s*[-–/]\s*([0-2])(?:\s*[-–/]\s*([0-2]))?\b', line)
+        tokens_upper = re.findall(r'\b[A-Za-z]+\b', line.upper())
+
+        has_freq = bool(num_match or any(t in FREQ_TOKENS for t in tokens_upper))
+        has_dose = bool(dose)
+
+        # Only accept shorthand lines that have a dose plus a frequency token (or explicit SOS/PRN)
+        if not (has_dose and has_freq) and not ("SOS" in tokens_upper or "PRN" in tokens_upper):
+            continue
+
         name_part = line[:dose_match.start()].strip() if dose_match else " ".join(line.split()[:2])
         name = re.sub(r'^[0-9]+[.)\s-]+', '', name_part).strip()
+        # Strip Tab/Cap/Inj/Syp prefixes
+        name = re.sub(r'^(?:Tab(?:let)?|Cap(?:sule)?|Inj(?:ection)?|Syp|Syrup)\.?\s+', '', name, flags=re.IGNORECASE).strip()
         if not name or len(name) < 2:
             continue
 
@@ -1524,6 +1463,7 @@ def init_session_state():
         "audio_transcript": None,
         "audio_response":   None,
         "audio_alert":      None,   # serialised Decision dict for rerun persistence
+        "mic_bytes":        None,   # cached recorded audio bytes
         # Doctor tools
         "handoff_result":   None,
         "recon_result":     None,
@@ -1653,27 +1593,27 @@ def render_consent_gate() -> bool:
         """
         <div style="border:2px solid #e5e7eb;border-radius:10px;padding:1.5rem;margin-bottom:1rem;">
         <h3 style="margin-top:0;">📋 Before You Begin · शुरू करने से पहले</h3>
-        <p><strong>AuraVoice is a health information tool, not a medical service. · ऑरा-वॉइस एक स्वास्थ्य सूचना साधन है, चिकित्सीय सेवा नहीं।</strong></p>
+        <p><strong>AuraVoice is a health information demo, not a medical service. · ऑरा-वॉइस एक स्वास्थ्य सूचना डेमो है, चिकित्सीय सेवा नहीं।</strong></p>
         <hr style="margin:0.8rem 0;border:0;border-top:1px solid #e5e7eb;"/>
         <div style="display:flex;flex-wrap:wrap;gap:1.5rem;">
           <div style="flex:1;min-width:280px;">
             <h4 style="margin:0 0 0.5rem 0;">🇬🇧 English Notice</h4>
             <p style="font-size:0.92rem;">It does not diagnose, prescribe, or replace a doctor's advice.</p>
             <ul style="font-size:0.9rem;">
-              <li>Your text, images, and audio are processed securely. Personal data is protected in accordance with India's <strong>DPDP Act 2023</strong> (purpose limitation, no persistent storage).</li>
-              <li>AuraVoice does not store data beyond this browser session.</li>
-              <li>Designed in alignment with <strong>India's DPDP Act 2023</strong> (purpose limitation, informed consent).</li>
+              <li>Your text, images, and audio are sent to <strong>Google Gemini</strong> and <strong>Groq</strong> APIs for processing. On free tiers, inputs may be used by model providers for model improvement.</li>
+              <li><strong>Demo application</strong>: Please use fictional or simulated data only. Do not submit real personal health or medical information.</li>
+              <li>AuraVoice does not retain data beyond this browser session.</li>
               <li>In a medical emergency, call <strong>112</strong> / <strong>108</strong> immediately.</li>
             </ul>
-            <p style="font-size:0.85rem;color:#6b7280;"><em>Consent must be specific, in a language you understand, and can be withdrawn by closing this tab.</em></p>
+            <p style="font-size:0.85rem;color:#6b7280;"><em>Consent is specific, in a language you understand, and can be withdrawn by closing this tab.</em></p>
           </div>
           <div style="flex:1;min-width:280px;border-left:1px solid #e5e7eb;padding-left:1rem;">
             <h4 style="margin:0 0 0.5rem 0;">🇮🇳 हिंदी सूचना (Hindi Notice)</h4>
             <p style="font-size:0.92rem;">यह ऐप किसी बीमारी का निदान नहीं करता और डॉक्टर की सलाह का विकल्प नहीं है।</p>
             <ul style="font-size:0.9rem;">
-              <li>आपका टेक्स्ट, आवाज़ और तस्वीरें सुरक्षित रूप से प्रोसेस की जाती हैं। व्यक्तिगत डेटा <strong>भारत के DPDP अधिनियम 2023</strong> (उद्देश्य सीमा, कोई स्थायी संग्रहण नहीं) के तहत सुरक्षित है।</li>
+              <li>आपका टेक्स्ट, आवाज़ और तस्वीरें प्रोसेसिंग के लिए <strong>Google Gemini</strong> और <strong>Groq</strong> APIs को भेजी जाती हैं। मुफ़्त टियर पर, मॉडल सुधार के लिए इनपुट का उपयोग किया जा सकता है।</li>
+              <li><strong>डेमो अनुप्रयोग</strong>: कृपया केवल काल्पनिक या सिम्युलेटेड डेटा का उपयोग करें। वास्तविक व्यक्तिगत स्वास्थ्य जानकारी दर्ज न करें।</li>
               <li>ऑरा-वॉइस इस ब्राउज़र सत्र के बाद कोई डेटा सुरक्षित नहीं रखता।</li>
-              <li>यह <strong>भारत के DPDP अधिनियम 2023</strong> के सिद्धांतों (उद्देश्य सीमा, सूचित सहमति) के अनुरूप है।</li>
               <li>चिकित्सा आपातकाल में तुरंत <strong>112</strong> या <strong>108</strong> पर कॉल करें।</li>
             </ul>
             <p style="font-size:0.85rem;color:#6b7280;"><em>सहमति विशिष्ट है, आपकी समझी जाने वाली भाषा में है, और इस टैब को बंद करके वापस ली जा सकती है।</em></p>
@@ -1716,8 +1656,16 @@ def render_sidebar():
         )
         st.divider()
 
-        # ── API Keys (hidden when in production via AURAVOICE_PROD env flag) ──
-        is_prod = os.getenv("AURAVOICE_PROD", "").lower() in ("1", "true", "yes")
+        # ── API Keys (hidden when in production via AURAVOICE_PROD env flag or secret) ──
+        prod_secret = ""
+        try:
+            prod_secret = str(st.secrets.get("AURAVOICE_PROD", ""))
+        except Exception:
+            pass
+        is_prod = (
+            os.getenv("AURAVOICE_PROD", "").lower() in ("1", "true", "yes")
+            or prod_secret.lower() in ("1", "true", "yes")
+        )
         if not is_prod:
             with st.expander("🔑 API Keys (Dev)", expanded=not st.session_state["api_keys_set"]):
                 st.info(
@@ -1871,13 +1819,12 @@ def render_hero():
         </div>""",
         unsafe_allow_html=True,
     )
-    # DPDP Act data privacy disclaimer
-    st.info(
-        "🛡️ **Data Privacy Disclaimer**: Personal information is protected under the "
-        "**Digital Personal Data Protection (DPDP) Act of India, 2023**. "
-        "AuraVoice operates under strict purpose limitation, processes inputs securely in real-time, "
-        "and does not retain your personal health data beyond the active session.",
-        icon="🔒",
+    # Demo mode and privacy notice
+    st.warning(
+        "🔬 **Demo Mode · Use Fictional Data**: AuraVoice is an assistive health information demo. "
+        "Inputs are processed via Google Gemini and Groq APIs (free tiers may use inputs for model improvement). "
+        "Do not enter real personal health data. Use fictional or simulated cases only.",
+        icon="⚠️",
     )
 
 
@@ -1929,6 +1876,7 @@ def tab_symptom_checker(gemini_client, groq_client):
             render_emergency_alert(
                 stored_dec,
                 st.session_state["user_profile"]["region"],
+                msg_id=msg.get("id", ""),
             )
         else:
             with st.chat_message(role):
@@ -1945,6 +1893,7 @@ def tab_symptom_checker(gemini_client, groq_client):
         render_emergency_alert(
             Decision(tier=1, matched=matched_p),
             st.session_state["user_profile"]["region"],
+            msg_id="pending_tier1",
         )
         st.warning(
             f"This may be a past event. Please confirm: **Is this happening RIGHT NOW?**",
@@ -1990,11 +1939,12 @@ def tab_symptom_checker(gemini_client, groq_client):
 
     if user_input:
         msg_id = str(int(time.time() * 1000))
-        st.session_state["chat_history"].append(
-            {"role": "user", "content": user_input, "id": msg_id}
-        )
-        with st.chat_message("user"):
-            st.markdown(user_input)
+        if not confirmed_past_flag:
+            st.session_state["chat_history"].append(
+                {"role": "user", "content": user_input, "id": msg_id}
+            )
+            with st.chat_message("user"):
+                st.markdown(user_input)
 
         # 1. Split detection out before assistant bubble & LLM streaming
         region = st.session_state["user_profile"]["region"]
@@ -2014,14 +1964,14 @@ def tab_symptom_checker(gemini_client, groq_client):
         if dec.is_emergency:
             st.session_state["chat_history"].append({
                 "role": "alert",
-                "tier": max(dec.tier, 2),
+                "tier": dec.tier,
                 "matched": dec.matched,
                 "crisis": dec.crisis,
                 "snakebite": dec.snakebite,
                 "info_query": dec.info_query,
                 "id": msg_id + "_alert",
             })
-            render_emergency_alert(dec, region)
+            render_emergency_alert(dec, region, msg_id=msg_id + "_alert")
 
         # 3. Open assistant chat bubble and generate / stream response
         with st.chat_message("assistant"):
@@ -2151,16 +2101,17 @@ def tab_audio_agent(gemini_client, groq_client):
         icon="🎤",
     )
 
-    audio_bytes = None
     try:
         from streamlit_mic_recorder import mic_recorder  # type: ignore
         recording   = mic_recorder(
             start_prompt="⏺️ Start Recording",
             stop_prompt="⏹️ Stop Recording",
+            format="wav",
             just_once=True,
             key="mic_rec",
         )
-        audio_bytes = recording["bytes"] if recording else None
+        if recording and recording.get("bytes"):
+            st.session_state["mic_bytes"] = recording["bytes"]
     except Exception as e:
         log.warning("mic_recorder: %s", e)
         st.warning("In-browser mic unavailable. Upload audio or use the text box below.", icon="⚠️")
@@ -2170,8 +2121,8 @@ def tab_audio_agent(gemini_client, groq_client):
         type=["wav", "mp3", "ogg", "m4a", "webm"],
         key="audio_upload",
     )
-    # Use getvalue() so we can re-read even after .read() on upload
-    audio_source = audio_bytes or (uploaded.getvalue() if uploaded else None)
+    # Read audio_source from mic_bytes in session state or uploaded file
+    audio_source = st.session_state.get("mic_bytes") or (uploaded.getvalue() if uploaded else None)
 
     if audio_source and len(audio_source) > 500:
         if st.button("🔊 Process Audio", use_container_width=True, type="primary", key="audio_process"):
@@ -2182,6 +2133,10 @@ def tab_audio_agent(gemini_client, groq_client):
                 )
             st.session_state["audio_transcript"] = transcript
             st.session_state["audio_response"]   = response
+            if dec.tier == -1:
+                st.session_state["pending_audio_tier1_check"] = (dec.matched, transcript)
+                st.session_state["audio_alert"] = None
+                st.rerun()
             # Store or clear decision for re-render
             if dec.is_emergency:
                 st.session_state["audio_alert"] = {
@@ -2201,6 +2156,7 @@ def tab_audio_agent(gemini_client, groq_client):
         render_emergency_alert(
             Decision(tier=1, matched=matched_pv),
             st.session_state["user_profile"]["region"],
+            msg_id="v_pending_tier1",
         )
         st.warning(
             f"This may describe a past event. Please confirm: **Is this happening RIGHT NOW?**",
@@ -2240,7 +2196,11 @@ def tab_audio_agent(gemini_client, groq_client):
             snakebite=audio_alert.get("snakebite", False),
             info_query=audio_alert.get("info_query", False),
         )
-        render_emergency_alert(a_dec, st.session_state["user_profile"]["region"])
+        render_emergency_alert(
+            a_dec,
+            st.session_state["user_profile"]["region"],
+            msg_id="audio_alert",
+        )
 
     # Render from cache
     transcript = st.session_state.get("audio_transcript")
@@ -2278,7 +2238,7 @@ def tab_audio_agent(gemini_client, groq_client):
 
             if dec_v.is_emergency:
                 st.session_state["audio_alert"] = {
-                    "tier": max(dec_v.tier, 2),
+                    "tier": dec_v.tier,
                     "matched": dec_v.matched,
                     "crisis": dec_v.crisis,
                     "snakebite": dec_v.snakebite,
@@ -2400,8 +2360,8 @@ and multilingual patients across India.
 
 🌐 **Live Application:** [https://auravoice-multimodal-health-accessibility-agent-7sc3pkcpirqquh.streamlit.app/](https://auravoice-multimodal-health-accessibility-agent-7sc3pkcpirqquh.streamlit.app/)  
 📂 **Source Code:** [https://github.com/pgovila/AuraVoice-Multimodal-Health-Accessibility-Agent](https://github.com/pgovila/AuraVoice-Multimodal-Health-Accessibility-Agent)  
-🏷️ **Topics & Categories:** `healthcare` · `accessibility` · `streamlit` · `gemini` · `hindi` · `multimodal-ai` · `voice-agent` · `dpdp-act`
-
+🏷️ **Topics & Categories:** `healthcare` · `accessibility` · `streamlit` · `gemini` · `hindi` · `multimodal-ai` · `voice-agent`
+ 
 ### 🎯 Features
 | Feature | Technology |
 |---|---|
@@ -2414,7 +2374,7 @@ and multilingual patients across India.
 | TTS (markdown-stripped, safe JS) | Web Speech API |
 | Simple Mode | CSS injection |
 | India pathways (112/108/102/Tele-MANAS) | Verified static list |
-| Consent gate (DPDP 2023) | Session-state gate |
+| Consent gate | Session-state gate |
 
 ### ⚙️ Active Models
 - Primary: `{GEMINI_MODEL}` (configurable via `AURAVOICE_GEMINI_MODEL` env)
@@ -2430,8 +2390,8 @@ and multilingual patients across India.
 
 ### 🔒 Privacy
 - No data stored beyond this browser session.
-- Inputs sent to Google Gemini and Groq APIs (see their privacy policies).
-- Designed to align with India's DPDP Act 2023.
+- Inputs sent to Google Gemini and Groq APIs (free tiers may use inputs for model improvement).
+- Demo application: use fictional data only.
 - ABDM/ABHA: users encouraged to create digital health ID at abdm.gov.in.
     """)
 

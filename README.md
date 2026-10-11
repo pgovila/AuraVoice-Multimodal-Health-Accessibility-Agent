@@ -7,7 +7,6 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 🚀 **Live Deployment:** [https://auravoice-multimodal-health-accessibility-agent-7sc3pkcpirqquh.streamlit.app/](https://auravoice-multimodal-health-accessibility-agent-7sc3pkcpirqquh.streamlit.app/)  
-🎥 **Demo Video:** [Watch AuraVoice Demo Walkthrough](https://youtu.be/auravoice-demo)
 
 ---
 
@@ -23,26 +22,35 @@
 
 ## 📊 Evaluation Results (October 2026)
 
-### Evaluation Protocol & Test Set Provenance
-- **Test Set Authorship & Independence:** The evaluation dataset (`eval_emergency.csv`, N=75 utterances: 45 English, 30 Hindi) was authored by **Team AuraVoice (Pankhuri Govila)** *prior* to tuning the detector rules as an independent holdout benchmark. It was specifically designed with adversarial negations (*"seene mein dard nahi hai aaj"*), colloquial idioms (*"heart is full of joy"*, *"stroke of luck"*), routine symptom queries, and authentic patient phrasings to prevent seed-set memorization.
-- **Offline Rule Engine vs. Live LLM Veto Pipeline:** 
-  - `python eval_emergency.py` runs entirely **offline with zero API keys required**, measuring the pure deterministic rule engine (`emergency.py`).
-  - In Rule-Only mode, precision is **92.3% (36/39)** because 3 safe-by-design non-suppressed negations trigger alerts (prioritizing recall over precision).
-  - The **100.0% Precision (Rule + LLM Veto)** was measured in the full application pipeline, where the secondary live LLM layer (`confirm_emergency_with_llm` using Gemini 3.6 Flash / Groq) confirms or vetoes non-emergency negations while strictly preserving safety exemptions (snakebite and acute trauma are never vetoed).
-- **Transparent Error Disclosure (The 1 Missed Tier-1 Case):**
-  - **1 missed Tier-1 emergency** (26/27 recall = 96.3%): `"heavy bleeding in third trimester of pregnancy"` (predicted as 0 / non-alert by the rule engine).
-  - *Root cause:* The rule engine contained keywords for acute hemorrhage (`"heavy bleeding won't stop"`, `"heavy vaginal bleeding"`), but lacked specific keyword patterns for obstetrical third-trimester hemorrhage. Disclosing this real limitation demonstrates genuine clinical evaluation integrity.
+### Evaluation Protocol & Benchmark Provenance
+- **Development Set (In-Sample, N=75):** The dataset `eval_emergency.csv` (45 English, 30 Hindi) was used while developing and iteratively tuning the detector keyword lists. Therefore, metrics on this set are **in-sample** benchmarks.
+- **Held-Out Test Set (Out-of-Sample, N=40):** To evaluate out-of-sample generalization, a fresh held-out set (`eval_heldout.csv`: 25 English, 15 Hindi) of authentic novel patient expressions was authored without referencing the detector phrase lists. Running the offline rule engine on this held-out set demonstrates the expected boundary of keyword matching: 18/18 true negatives are preserved (100% precision, zero false alarms), but recall is lower on unseen phrasings (Tier-1: 15.4%, Tier-2: 0%), illustrating why AuraVoice integrates live LLM confirmation in the full app.
+- **Evaluation Harness vs. Live App Behavior:**
+  - In `eval_emergency.py`, the offline test harness maps strong past-tense utterances (*"had a heart attack last week"*) and informational queries to non-alerts (predicted tier 0).
+  - In the interactive Streamlit app, both cases trigger safety UI: past-tense events prompt a confirmation check (*"Is this happening RIGHT NOW?"*), and informational queries render the emergency alert banner with a one-click dismissal button (*"Not an emergency"*).
+- **Offline Reproducibility:** Both benchmarks run completely offline with zero API keys:
+  ```cmd
+  python eval_emergency.py eval_emergency.csv
+  python eval_emergency.py eval_heldout.csv
+  ```
 
+### Development Set Performance (`eval_emergency.csv`, N=75)
 | Metric | Result | 95% Wilson CI | Notes |
 |---|---|---|---|
 | **Tier-1 Recall (CALL NOW) — Overall** | **96.3%** (26/27) | [81.7% – 99.3%] | 1 missed case: *"heavy bleeding in third trimester of pregnancy"* |
-| **Tier-1 Recall (CALL NOW) — Hindi** | **100.0%** (11/11) | [74.1% – 100.0%] | Devanagari + Roman transliteration; combining-mark safe |
-| **Tier-1 Recall (CALL NOW) — English** | **93.8%** (15/16) | [71.7% – 98.9%] | Cardiac, stroke, respiratory, overdose, seizure (1 missed obstetrical) |
-| **Tier-2 Recall (URGENT) — Overall** | **75.0%** (9/12) | [46.8% – 91.1%] | Shortness of breath, chest tightness, contractions |
-| **Any-Alert Precision (Rule-Only)** | **92.3%** (36/39) | [79.7% – 97.3%] | Offline benchmark (`eval_emergency.py`, no API keys); 3 intentional safety FPs |
-| **Any-Alert Precision (Rule + LLM Veto)** | **100.0%** | [90.3% – 100.0%] | Evaluated with live model calls (`confirm_emergency_with_llm`); clears negations |
-| **True Negatives (Rule Engine)** | **91.7%** (33/36) | [78.2% – 97.1%] | Metaphors, routine cold, greetings, past events |
-| **Evaluator & Date** | Pankhuri Govila (Team AuraVoice) | October 2026 | Run rule baseline via `python eval_emergency.py` |
+| **Tier-1 Recall (CALL NOW) — Hindi** | **100.0%** (11/11) | [74.1% – 100.0%] | Devanagari + Roman transliteration |
+| **Tier-1 Recall (CALL NOW) — English** | **93.8%** (15/16) | [71.7% – 98.9%] | Cardiac, stroke, respiratory, overdose, seizure |
+| **Tier-2 Recall (URGENT) — Overall** | **83.3%** (10/12) | [55.2% – 95.3%] | Chest tightness, contractions, crisis phrases |
+| **Any-Alert Precision (Rule-Only)** | **90.0%** (36/40) | [76.9% – 96.0%] | Offline rule engine (4 safe-by-design negation/metaphor alerts) |
+| **True Negatives (Rule Engine)** | **88.9%** (32/36) | [74.7% – 95.6%] | Metaphors, routine symptoms, past events |
+
+### Fresh Held-Out Test Set Performance (`eval_heldout.csv`, N=40)
+| Metric | Result | 95% Wilson CI | Notes |
+|---|---|---|---|
+| **Tier-1 Recall (CALL NOW)** | **15.4%** (2/13) | [4.3% – 42.2%] | Unseen synonym phrasings |
+| **Tier-2 Recall (URGENT)** | **0.0%** (0/9) | [0.0% – 30.1%] | Unseen colloquial urgent phrasings |
+| **Any-Alert Precision** | **100.0%** (4/4) | [51.0% – 100.0%] | Zero false alarms on negative samples |
+| **True Negatives** | **100.0%** (18/18) | [82.4% – 100.0%] | Routine symptoms, past events, idioms correctly cleared |
 
 ---
 
@@ -62,7 +70,7 @@
 | **🔤 Simple Mode** | Large text, high contrast, bigger buttons — designed for elderly/low-vision users | CSS injection |
 | **🌍 Multilingual** | Responds in user's language; Devanagari + transliteration in emergency set; missing-language banner | Gemini native |
 | **🔁 3-Tier Fallback** | Gemini 3.6 Flash → Groq Qwen3.8-27b → static safe response | Resilient architecture |
-| **📋 Consent Gate** | DPDP 2023-aligned informed consent shown before app access | Session-state gate |
+| **📋 Consent Gate** | Informed consent gate shown before app access | Session-state gate |
 | **🏥 India Health Pathways** | 112 / 108 / 102 / Tele-MANAS / iCall (hours-labelled) / Childline / Elderline / Poison Control | Static verified panel |
 
 ---
@@ -105,7 +113,7 @@
 | **Doctor communication** | None | SOAP-lite handoff summary the patient prints or shows on phone |
 | **Accessibility** | Afterthought | TTS on every response, Simple Mode, navigation-first environment descriptions |
 | **Reliability** | Single-model = single point of failure | 3-tier: Gemini → Groq → static safe response |
-| **Privacy/consent** | Rarely addressed | DPDP 2023-aligned consent gate, no data storage |
+| **Privacy/consent** | Rarely addressed | Informed consent gate, session-only storage |
 
 ### Key Technical Decisions
 
@@ -131,7 +139,7 @@
 User Input (Camera / Mic / Text)
         │
         ▼
- Consent Gate (DPDP 2023 — one-time per session)
+ Consent Gate (one-time per session)
         │
         ▼
  Real-Time Context Builder
@@ -212,7 +220,7 @@ This section exists because a health tool must be honest about what it cannot do
 - For a production deployment handling patient data, a paid API tier with a Data Processing Agreement (DPA) is required.
 
 ### Regulatory Alignment
-- Designed in alignment with **India's Digital Personal Data Protection (DPDP) Act 2023** principles: purpose limitation, data minimisation, and informed consent before processing.
+- **Privacy & Data Minimisation**: Operates with purpose limitation and zero persistent storage beyond the active session; users explicitly consent prior to entering information.
 - Aligned with **ABDM/ABHA** digital health identity principles — users are directed to create a health ID at abdm.gov.in.
 - **Not a medical device** under the Medical Devices Rules 2017 (India) or FDA 510(k) (USA). No regulatory clearance has been sought.
 
@@ -274,7 +282,7 @@ streamlit run app.py
 
 ### Step 5: First Use
 
-1. Accept the **consent screen** (DPDP 2023 notice — shown once per session)
+1. Accept the **consent screen** (notice shown once per session)
 2. Enter API keys in sidebar → click **🔗 Connect APIs**
 3. Fill in your profile → click **💾 Save Profile**
 4. Use any of the five tabs

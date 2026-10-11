@@ -7,7 +7,6 @@ Reports:
 - Tier-1 and Tier-2 recall with Wilson Score 95% Confidence Intervals
 - Any-alert precision and per-tier precision
 - 3x3 confusion matrix (Expected 0/1/2 vs Predicted 0/1/2)
-- Rule-only vs Rule+Veto breakdown
 - "Wrong-name / high-confidence" error cases
 """
 
@@ -132,4 +131,5 @@ def run_evaluation(csv_path: str = "eval_emergency.csv"):
 
 
 if __name__ == "__main__":
-    run_evaluation()
+    csv_file = sys.argv[1] if len(sys.argv) > 1 else "eval_emergency.csv"
+    run_evaluation(csv_file)

@@ -1,0 +1,41 @@
+text,language,expected_tier
+"My grandfather collapsed and won't wake up",en,1
+"Dad is clutching his chest and turning pale with left arm numbness",en,1
+"The baby has turned blue around the lips and cannot inhale",en,1
+"I cut my artery and blood is spurting out everywhere",en,1
+"Someone swallowed rat poison by accident 10 minutes ago",en,1
+"He fell off the ladder hit his head and is unresponsive",en,1
+"She is having back-to-back seizures without regaining consciousness",en,1
+"A viper bit my brother's leg in the field just now",en,1
+"pitaji achanak behosh hokar gir pade aur bol nahi rahe",hi,1
+"seene mein achanak behad tez chubhan aur dard utha hai",hi,1
+"bhaiya ko khet mein kaale saanp ne daskar kaat liya",hi,1
+"gale mein khana phans gaya aur saans band ho gayi",hi,1
+"sar mein aisa bhayanak dard hai jaisa pehle kabhi nahi hua",hi,1
+"I am having painful tightness in my chest while jogging",en,2
+"I cannot catch my breath when lying down on the bed",en,2
+"Sudden extreme confusion, doesn't recognize where he is",en,2
+"My water just broke and contractions are five minutes apart",en,2
+"I feel completely hopeless and don't want to live anymore",en,2
+"do ghante se saans lene mein bhari takleef ho rahi hai",hi,2
+"meri chhati par bhari dabav mehsoos ho raha hai",hi,2
+"pet mein tez marod aur ulti band nahi ho rahi",hi,2
+"khud ko khatam karne ke vichaar aa rahe hain",hi,2
+"I have a mild runny nose and sneezing since this morning",en,0
+"Can you tell me if this medication causes drowsiness?",en,0
+"I feel dizzy when standing up too fast after sitting for hours",en,0
+"My daughter has an exam tomorrow and is very anxious",en,0
+"The pharmacy is closed until tomorrow morning",en,0
+"My heart was pounding with excitement during the cricket match",en,0
+"He survived a bad stroke ten years ago and is healthy now",en,0
+"What are the common side effects of amlodipine 5mg?",en,0
+"How many hours of sleep should an adult get daily?",en,0
+"Thank you for the helpful health information",en,0
+"mujhe halki khansi aur gale mein kharash hai",hi,0
+"kya yeh dawai khali pet leni hoti hai?",hi,0
+"aaj subah se sar mein halka sa dard hai jo chai peene se theek ho gaya",hi,0
+"khushi ke mare mera dil jhoom utha jab natija aaya",hi,0
+"dada ji ko paanch saal pehle dil ka daura pada tha par ab bilkul swasth hain",hi,0
+"aapki app bahut acchi aur aasaan hai",hi,0
+"bukhaar 99 degree hai par bhookh theek lag rahi hai",hi,0
+"what is the safe recommended dosage of vitamin C tablets?",en,0

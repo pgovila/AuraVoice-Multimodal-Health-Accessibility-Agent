@@ -1,10 +1,9 @@
 """
 tests/test_emergency.py
 =======================
-Independent pytest suite for emergency.py classify().
-
-ALL test sentences were written independently — none are verbatim copies of
-the seed phrase lists. This tests generalisation, not memorisation.
+Comprehensive pytest suite for emergency.py classify().
+Tests emergency tier classification, crisis/self-harm routing,
+information-question disambiguation, and known regressions.
 
 Run:
     pytest tests/test_emergency.py -v
@@ -57,6 +56,11 @@ class TestTier1English:
 
     def test_overdose_active(self):
         assert tier("she took an overdose of pills") >= 1
+
+    def test_what_should_i_do_not_breathing(self):
+        d = classify("What should I do? He is not breathing")
+        assert d.tier == 1
+        assert d.info_query is False
 
     def test_seizure_ongoing(self):
         assert tier("convulsions have been going on for 10 minutes") >= 1
@@ -141,6 +145,11 @@ class TestCrisis:
 
     def test_suicide_en(self):
         d = classify("I am thinking about suicide")
+        assert d.tier >= 2
+        assert d.crisis is True
+
+    def test_going_to_kill_myself_tonight(self):
+        d = classify("going to kill myself tonight")
         assert d.tier >= 2
         assert d.crisis is True
 

@@ -64,14 +64,10 @@ TIER1_PHRASES: list[tuple[str, str]] = [
     ("bleeding won't stop", "en"), ("bleeding profusely", "en"),
     ("unconscious", "en"), ("unresponsive", "en"), ("not waking up", "en"),
     ("no pulse", "en"), ("cannot feel his pulse", "en"), ("cannot feel a pulse", "en"),
-    ("not responding", "en"),
     # English – poisoning / overdose
     ("overdose", "en"), ("swallowed poison", "en"), ("took too many pills", "en"),
     # English – seizure ongoing
     ("seizure won't stop", "en"), ("convulsions", "en"),
-    # English – active suicidal crisis (tier-1 specific phrasing)
-    ("going to kill myself", "en"), ("about to end my life", "en"),
-    ("taking pills to die", "en"),
     # English – obstetric
     ("eclampsia", "en"), ("baby not moving for hours", "en"),
     ("heavy bleeding in pregnancy", "en"),
@@ -95,9 +91,6 @@ TIER1_PHRASES: list[tuple[str, str]] = [
     ("khoon bahut bahut aa raha hai", "hi"), ("khoon band nahi ho raha", "hi"),
     ("behosh ho gaya", "hi"),
     ("होश नहीं है", "hi"),
-    # Hindi – active suicide
-    ("marne ki koshish kar raha hoon", "hi"), ("jaan de doonga", "hi"),
-    ("khud ko maar loonga", "hi"),
     # Hindi – obstetric
     ("bachcha hil nahi raha kal se", "hi"), ("pani toot gaya", "hi"),
     ("prasav mein bahut khoon", "hi"),
@@ -149,26 +142,34 @@ TIER2_PHRASES: list[tuple[str, str]] = [
 # Crisis / self-harm — NEVER downgraded by LLM confirm; always fires tier-2 minimum
 CRISIS_PHRASES: list[str] = [
     # English
-    "suicide", "want to die", "kill myself", "self harm", "no reason to live",
-    "end my life", "hurt myself", "hurting myself",
+    "suicide", "want to die", "kill myself", "going to kill myself",
+    "about to end my life", "pills to die", "taking pills to die",
+    "self harm", "no reason to live", "end my life", "hurt myself", "hurting myself",
     # Hindi – Devanagari
     "आत्महत्या", "मरना चाहता हूँ", "मरना चाहती हूँ", "खुद को नुकसान",
     # Hindi – transliteration
     "aatmahatya", "marna chahta hoon", "marna chahti hoon",
-    "jaan dena chahta", "khud ko nuksaan",
+    "jaan dena chahta", "jaan de doonga", "khud ko nuksaan",
+    "marne ki koshish", "khud ko maar loonga",
+    # Regional
+    "marab chahta",
 ]
 
 # Words that appear in information / hypothetical questions rather than emergencies.
-# Detecting these turns a potential tier-1 into info_query=True (show banner + still answer).
+# Detecting these turns a potential tier-1 into info_query=True (show banner + still answer)
+# ONLY when no live acute cue is present in the text.
 _INFO_QUESTION_PREFIXES = (
-    "what is", "what are", "what happens", "what does", "what should",
-    "how do", "how does", "how is", "how can",
+    "what is", "what are", "what happens", "what does",
+    "how does", "how is",
     "tell me about", "explain", "describe",
     "what is an overdose", "what is a seizure", "what is eclampsia",
     "define ", "meaning of", "symptoms of",
     "can you tell me", "i want to know", "i want to learn",
-    "is it normal", "is it possible", "what to do", "how to treat",
+    "is it normal", "is it possible", "how to treat",
 )
+
+# Live cues: if any are present, the query describes an active patient situation, not pure info
+_LIVE_CUES = ("my ", "his ", "her ", "he is", "she is", "right now", "abhi")
 
 # Strong past-tense markers (specific time references — NOT short phrases like "had a")
 _STRONG_PAST_MARKERS = (
@@ -205,7 +206,7 @@ def _snake_cooccur(tokens: list[str]) -> bool:
 # ---------------------------------------------------------------------------
 SNAKEBITE_FIRST_AID = (
     "🐍 **SNAKEBITE — Call 112 / 108 immediately.**\n\n"
-    "**What to do RIGHT NOW (WHO / MoHFW guidance):**\n"
+    "**What to do RIGHT NOW ([WHO Guidelines](https://www.who.int/publications/i/item/9789290225300) · [MoHFW NAP-SE](https://main.mohfw.gov.in)):**\n"
     "1. Keep the person still and calm. Movement spreads venom faster.\n"
     "2. Immobilise the bitten limb — splint it at or below heart level.\n"
     "3. Remove rings, bangles, tight clothing near the bite site.\n"
@@ -214,7 +215,8 @@ SNAKEBITE_FIRST_AID = (
     "6. Note the snake's appearance if safe to do so — helps identify anti-venom.\n"
     "7. Rush to the nearest government hospital with anti-venom stock.\n\n"
     "📞 [Call 112](tel:112)  ·  🚑 [Call 108](tel:108)\n\n"
-    "⚠️ Anti-venom is the only effective treatment. Get to hospital NOW."
+    "⚠️ Anti-venom is the only effective treatment. Get to hospital NOW.\n\n"
+    "📖 Source: [WHO Guidelines for the Management of Snakebites](https://www.who.int/publications/i/item/9789290225300) · [MoHFW India](https://main.mohfw.gov.in)"
 )
 
 
@@ -229,10 +231,10 @@ def classify(text: str) -> Decision:
     Logic order
     -----------
     1. Normalise text.
-    2. Detect information questions → info_query (banner but answer).
+    2. Detect information questions (only when NO live cue is present).
     3. Snakebite co-occurrence (tier 1, snakebite=True, no veto ever).
-    4. Tier-1 phrase scan.
-    5. Crisis phrase scan (tier 2 minimum, crisis=True, no veto ever).
+    4. Crisis phrase scan (tier 2, crisis=True, scanned before tier 1 so self-harm routes correctly).
+    5. Tier-1 phrase scan.
     6. Tier-2 phrase scan.
     """
     if not text or not text.strip():
@@ -244,8 +246,8 @@ def classify(text: str) -> Decision:
     tokens = [t for t in _SPLIT_RE.split(lower) if t]   # whitespace+punct split, Devanagari-safe
 
     # --- information / hypothetical question ---
-    if any(lower.startswith(p) for p in _INFO_QUESTION_PREFIXES):
-        # Still scan for tier, but flag as info_query so caller can add escape tap
+    has_live_cue = any(cue in lower for cue in _LIVE_CUES)
+    if not has_live_cue and any(lower.startswith(p) for p in _INFO_QUESTION_PREFIXES):
         info_q = True
     else:
         info_q = False
@@ -255,17 +257,17 @@ def classify(text: str) -> Decision:
         return Decision(tier=1, matched="snakebite (token co-occurrence)",
                         snakebite=True, info_query=info_q)
 
+    # --- crisis phrases (tier 2 minimum, never downgraded, scanned BEFORE tier-1) ---
+    for phrase in CRISIS_PHRASES:
+        if phrase.lower() in lower:
+            return Decision(tier=2, matched=phrase, crisis=True, info_query=info_q)
+
     # --- tier-1 phrase scan ---
     _SB_WORDS = ("snake", "snakebite", "saanp", "bichchu", "scorpion", "katlis", "dank", "डंक", "बिच्छू", "साँप", "सांप")
     for phrase, _lang in TIER1_PHRASES:
         if phrase.lower() in lower:
             is_sb = any(w in phrase.lower() for w in _SB_WORDS)
             return Decision(tier=1, matched=phrase, snakebite=is_sb, info_query=info_q)
-
-    # --- crisis phrases (tier 2 minimum, never downgraded) ---
-    for phrase in CRISIS_PHRASES:
-        if phrase.lower() in lower:
-            return Decision(tier=2, matched=phrase, crisis=True, info_query=info_q)
 
     # --- tier-2 phrase scan ---
     for phrase, _lang in TIER2_PHRASES:
