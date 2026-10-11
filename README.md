@@ -285,10 +285,11 @@ streamlit run app.py
 
 ### Step 5: First Use
 
-1. Accept the **consent screen** (notice shown once per session)
-2. Enter API keys in sidebar → click **🔗 Connect APIs**
-3. Fill in your profile → click **💾 Save Profile**
-4. Use any of the five tabs
+1. Accept the **consent screen** (DPDP Act 2023 notice shown once per session)
+2. Explore the **interactive tutorial** (5-step walkthrough of Symptoms, Vision, Voice, Doctor Tools, and Accessibility)
+3. Enter API keys in sidebar → click **🔗 Connect APIs** (or auto-loaded from secrets)
+4. Fill in your profile → click **💾 Save Profile**
+5. Use any of the five tabs
 
 ---
 

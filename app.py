@@ -24,12 +24,13 @@ Module map
  9. reconcile_agent  – discharge reconciliation (structured JSON → table)
 10. session          – st.session_state initialisation
 11. tts              – text-to-speech (markdown-stripped, safe JS)
-12. consent          – informed consent gate
-13. sidebar          – API keys, profile, simple-mode toggle
-14. simple_mode      – accessibility CSS injection
-15. india_pathways   – verified emergency hotlines panel
-16. ui_tabs          – all tab renderers (results cached in session_state)
-17. main             – entry point (startup self-test, secrets guard)
+12. consent          – informed consent gate (DPDP Act 2023)
+13. tutorial         – interactive onboarding walkthrough & user guide
+14. sidebar          – API keys, profile, simple-mode toggle
+15. simple_mode      – accessibility CSS injection
+16. india_pathways   – verified emergency hotlines panel
+17. ui_tabs          – all tab renderers (results cached in session_state)
+18. main             – entry point (startup self-test, secrets guard)
 """
 
 # ── stdlib ────────────────────────────────────────────────────────────────────
@@ -1442,9 +1443,11 @@ def init_session_state():
         "active_model":     "none",
         "last_error":       "",
         "chat_history":     [],
-        "simple_mode":      False,
-        "consent_given":    False,
-        "self_test_done":   False,
+        "simple_mode":        False,
+        "consent_given":      False,
+        "tutorial_completed": False,
+        "tutorial_step":      0,
+        "self_test_done":     False,
         "self_test_result": {},
         "user_profile": {
             "name":       "User",   # stored locally only — never sent to LLM
@@ -1631,7 +1634,176 @@ def render_consent_gate() -> bool:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 13. SIDEBAR
+# 13. ONBOARDING TUTORIAL & USER GUIDE
+# ─────────────────────────────────────────────────────────────────────────────
+
+def render_tutorial() -> bool:
+    """
+    Renders an interactive multi-step onboarding tutorial after the consent screen
+    and before entering the main app.
+    Returns True when the tutorial is completed or skipped; False while in progress.
+    """
+    if st.session_state.get("tutorial_completed"):
+        return True
+
+    step = st.session_state.get("tutorial_step", 0)
+
+    tutorial_steps = [
+        {
+            "badge": "👋 Step 1 of 5 · Welcome & Setup",
+            "title": "Welcome to AuraVoice — Your Multilingual Health Companion",
+            "subtitle": "Accessible health literacy and triage designed for patients and caregivers across India.",
+            "icon": "🎙️",
+            "content": """
+### 🌟 What is AuraVoice?
+AuraVoice turns your smartphone into an intelligent, accessible health literacy aid. Whether you are an elderly person checking a medicine dosage, a caregiver helping a family member, or someone seeking urgent symptom guidance in your native language, AuraVoice is here to assist you.
+
+#### ⚙️ How to Get Started:
+1. **Set Up Your Profile**: In the left sidebar, enter your **Age**, **Language** (English, Hindi, Bengali, Tamil, Telugu, etc.), and any **Known Conditions** or **Current Medicines**.
+2. **Context-Aware Safety**: AuraVoice uses your background (e.g. blood thinners, hypertension) to automatically tailor safety checks and clinical urgency.
+3. **Privacy First**: AuraVoice complies with India's **DPDP Act 2023** — no personal health records or personal identifiers are stored beyond your active session.
+            """,
+            "tip": "💡 **Quick Tip**: You can customize your profile in the sidebar at any time. Names are kept locally on your device and are never sent to AI models.",
+        },
+        {
+            "badge": "💬 Step 2 of 5 · Symptom Triage",
+            "title": "Symptom Checker & Emergency Safety Net",
+            "subtitle": "Describe what you feel in your own words, text or voice, in any language.",
+            "icon": "💬",
+            "content": """
+### 🩺 What the Symptom Checker Does:
+- **Natural Language Input**: Type or speak symptoms naturally (*e.g., "I have had fever of 102°F since yesterday"* or *"mujhe do din se chakkar aa rahe hain"*).
+- **Clinical Triage Levels**: Classifies symptoms into **Urgent** (go today), **Soon** (within 2–3 days), or **Routine** (home monitoring).
+- **Conversational Memory**: Remembers previous questions in your session so you can ask natural follow-up questions.
+
+#### 🚨 Automatic Emergency Safety Guardrails:
+- **Tier 1 Immediate Emergencies**: Symptoms of cardiac arrest, severe stroke, choking, or poison immediately trigger high-priority red alert cards with direct **112 / 108** dial buttons.
+- **🐍 Snakebite Guidance**: Provides verified first-aid guidance from WHO & MoHFW without delay.
+- **💙 Mental Health Crisis**: Self-harm distress queries immediately route to Govt of India's **Tele-MANAS (14416)** helpline.
+            """,
+            "tip": "⚠️ **Emergency Protocol**: AuraVoice does not replace an emergency room. If in severe danger, dial **112** or **108** immediately.",
+        },
+        {
+            "badge": "📷 Step 3 of 5 · Vision & Medication Safety",
+            "title": "Vision Agent: Prescription & Label Reading",
+            "subtitle": "Point your camera to understand medication dosages, timings, and environmental hazards.",
+            "icon": "📷",
+            "content": """
+### 💊 How to Use the Vision Agent:
+1. **Select Analysis Task**: Choose from reading pill labels, analyzing visible symptoms, reading doctor summaries, or environmental accessibility.
+2. **Upload or Capture**: Take a clear photo of your medicine bottle, blister strip, or doctor's prescription.
+3. **Automatic Quality Pre-Check**: AuraVoice inspects the image for blur, glare, or dark lighting before processing to prevent dangerous misreads.
+
+#### 📋 What You Receive:
+- **Verbatim Text**: Exact transcription of drug names, strengths, and expiry dates.
+- **Plain-Language Schedule**: Explains when to take the medicine (e.g. *Once daily with food*) at an easy-to-understand reading level.
+- **Teach-Back Verification**: Asks a gentle comprehension check question to ensure instructions are understood.
+            """,
+            "tip": "🔍 **Best Practice**: Always hold the camera steady in good lighting so the medication name and milligram strength are in sharp focus.",
+        },
+        {
+            "badge": "🎙️ Step 4 of 5 · Voice & Accessibility",
+            "title": "Voice Assistant & Simple Mode",
+            "subtitle": "Built from the ground up for low-literacy, visually impaired, and elderly users.",
+            "icon": "🎙️",
+            "content": """
+### 🗣️ Voice-First Interaction:
+- **Speak in Your Language**: Click the **⏺️ Start Recording** button in the Voice tab to describe symptoms without typing.
+- **Smart Transcription**: Dual-engine audio recognition with automatic Whisper fallback captures accents and regional terms.
+- **Listen Aloud (TTS)**: Click the **▶ Play** button below any assistant answer to hear it read aloud in natural spoken Indian English, Hindi, and regional accents.
+
+#### 🔤 Simple Mode (Elderly & Low-Vision):
+- Toggle **🔤 Simple Mode** in the sidebar anytime.
+- Instantly enlarges text fonts (+40%), expands touch targets, and applies high-contrast styling for easy reading.
+            """,
+            "tip": "🔊 **Audio Tip**: For the best speech recognition, hold your phone about 6 inches from your mouth in a quiet room.",
+        },
+        {
+            "badge": "🏥 Step 5 of 5 · Clinical Tools & Hotlines",
+            "title": "Doctor Tools & Verified Health Pathways",
+            "subtitle": "Bridging the communication gap between patients, families, and healthcare providers.",
+            "icon": "🏥",
+            "content": """
+### 👩‍⚕️ Doctor Tools Tab:
+1. **Clinical Handoff Brief**:
+   - Takes your symptom story and creates a crisp, professional **SBAR/SOAP brief** for your doctor, while preserving your exact words.
+2. **Discharge Medication Reconciliation**:
+   - Paste or upload hospital discharge notes alongside new pharmacy bills.
+   - Detects duplicate medications, missing prescriptions, or conflicting drug timings.
+
+#### 📞 Verified India Emergency Pathways:
+- **112**: All-in-one Emergency (Police, Fire, Medical)
+- **108**: Free Emergency Ambulance Service (EMRI)
+- **102**: Maternal & Child Transport
+- **14416**: Tele-MANAS (24/7 Mental Health Helpline, Govt of India)
+- **1098**: Childline  ·  **14567**: Elderline
+            """,
+            "tip": "🏥 **Doctor Visit**: Bring the generated Clinical Handoff summary to your appointment to help your doctor understand your symptoms faster.",
+        },
+    ]
+
+    total_steps = len(tutorial_steps)
+    curr = tutorial_steps[step]
+
+    st.markdown(
+        f"""
+        <div style="background:linear-gradient(135deg,#0f172a,#1e293b,#0f3460);
+                    padding:1.6rem 2rem;border-radius:12px;margin-bottom:1.2rem;color:white;border:1px solid #334155;">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:0.5rem;">
+                <span style="font-size:2rem;">{curr['icon']}</span>
+                <div>
+                    <span style="background:rgba(59,130,246,0.3);color:#93c5fd;padding:3px 10px;border-radius:999px;font-size:0.8rem;font-weight:600;">
+                        {curr['badge']}
+                    </span>
+                    <h2 style="margin:0.3rem 0 0;font-size:1.6rem;color:#f8fafc;">{curr['title']}</h2>
+                </div>
+            </div>
+            <p style="margin:0.2rem 0 0;font-size:0.95rem;color:#cbd5e1;">{curr['subtitle']}</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # Step progress bar
+    progress_val = (step + 1) / total_steps
+    st.progress(progress_val, text=f"Tutorial Progress: Step {step + 1} of {total_steps}")
+
+    # Step content in a clean container
+    with st.container():
+        st.markdown(curr["content"])
+        st.info(curr["tip"])
+
+    st.markdown("<hr style='margin:1.2rem 0;border:0;border-top:1px solid #334155;'/>", unsafe_allow_html=True)
+
+    # Navigation buttons
+    col_prev, col_skip, col_next = st.columns([1, 1, 1.2])
+
+    with col_prev:
+        if step > 0:
+            if st.button("⬅️ Previous", use_container_width=True, key="tut_prev"):
+                st.session_state["tutorial_step"] = step - 1
+                st.rerun()
+
+    with col_skip:
+        if st.button("⏩ Skip Tutorial", use_container_width=True, key="tut_skip"):
+            st.session_state["tutorial_completed"] = True
+            st.rerun()
+
+    with col_next:
+        if step < total_steps - 1:
+            if st.button("Next Step ➡️", use_container_width=True, type="primary", key="tut_next"):
+                st.session_state["tutorial_step"] = step + 1
+                st.rerun()
+        else:
+            if st.button("🚀 Get Started with AuraVoice", use_container_width=True, type="primary", key="tut_finish"):
+                st.session_state["tutorial_completed"] = True
+                st.rerun()
+
+    return False
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 14. SIDEBAR
 # ─────────────────────────────────────────────────────────────────────────────
 
 def is_prod_mode() -> bool:
@@ -1840,6 +2012,11 @@ def render_sidebar():
             st.info("No query sent yet", icon="⚪")
 
         st.divider()
+        if st.button("📖 App Guide & Tutorial", use_container_width=True, key="sidebar_tut_replay"):
+            st.session_state["tutorial_completed"] = False
+            st.session_state["tutorial_step"] = 0
+            st.rerun()
+
         st.caption(
             "⚠️ AuraVoice is a health information tool — not a medical service. "
             "Always consult a doctor for medical decisions."
@@ -2470,6 +2647,12 @@ and multilingual patients across India.
 - ABDM/ABHA: users encouraged to create digital health ID at abdm.gov.in.
     """)
 
+    st.divider()
+    if st.button("📖 Replay App Onboarding Tutorial", use_container_width=True, key="about_tut_replay"):
+        st.session_state["tutorial_completed"] = False
+        st.session_state["tutorial_step"] = 0
+        st.rerun()
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 17. MAIN
@@ -2510,6 +2693,9 @@ def main():
         inject_simple_mode_css()
 
     if not render_consent_gate():
+        return
+
+    if not render_tutorial():
         return
 
     render_sidebar()
