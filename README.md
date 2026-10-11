@@ -313,9 +313,11 @@ git push -u origin main
 1. [share.streamlit.io](https://share.streamlit.io) → **New app** → select repo → `app.py`
 2. **Advanced settings** → **Secrets**:
    ```toml
+   AURAVOICE_PROD = "1"
    GEMINI_API_KEY = "AIzaSy..."
    GROQ_API_KEY   = "gsk_..."
    ```
+   *(Setting `AURAVOICE_PROD = "1"` hides the Developer API key box from the sidebar)*
 3. Click **Deploy**
 
 ---

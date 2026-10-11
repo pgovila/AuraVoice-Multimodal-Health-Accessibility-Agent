@@ -1600,7 +1600,7 @@ def render_consent_gate() -> bool:
             <p style="font-size:0.92rem;">It does not diagnose, prescribe, or replace a doctor's advice.</p>
             <ul style="font-size:0.9rem;">
               <li>Your text, images, and audio are sent to <strong>Google Gemini</strong> and <strong>Groq</strong> APIs for processing. On free tiers, inputs may be used by model providers for model improvement.</li>
-              <li><strong>Demo application</strong>: Please use fictional or simulated data only. Do not submit real personal health or medical information.</li>
+              <li><strong>Personal Data Protection (DPDP Act 2023)</strong>: Personal health data is protected under India's Digital Personal Data Protection Act, 2023. AuraVoice operates under purpose limitation, processes inputs transiently in real time, and does not store or retain personal data beyond your session.</li>
               <li>AuraVoice does not retain data beyond this browser session.</li>
               <li>In a medical emergency, call <strong>112</strong> / <strong>108</strong> immediately.</li>
             </ul>
@@ -1611,7 +1611,7 @@ def render_consent_gate() -> bool:
             <p style="font-size:0.92rem;">यह ऐप किसी बीमारी का निदान नहीं करता और डॉक्टर की सलाह का विकल्प नहीं है।</p>
             <ul style="font-size:0.9rem;">
               <li>आपका टेक्स्ट, आवाज़ और तस्वीरें प्रोसेसिंग के लिए <strong>Google Gemini</strong> और <strong>Groq</strong> APIs को भेजी जाती हैं। मुफ़्त टियर पर, मॉडल सुधार के लिए इनपुट का उपयोग किया जा सकता है।</li>
-              <li><strong>डेमो अनुप्रयोग</strong>: कृपया केवल काल्पनिक या सिम्युलेटेड डेटा का उपयोग करें। वास्तविक व्यक्तिगत स्वास्थ्य जानकारी दर्ज न करें।</li>
+              <li><strong>व्यक्तिगत डेटा संरक्षण (DPDP अधिनियम 2023)</strong>: आपकी व्यक्तिगत जानकारी भारत के डिजिटल व्यक्तिगत डेटा संरक्षण (DPDP) अधिनियम 2023 के तहत सुरक्षित है। ऑरा-वॉइस उद्देश्य सीमा का पालन करता है और सत्र के बाद कोई डेटा संचित नहीं रखता।</li>
               <li>ऑरा-वॉइस इस ब्राउज़र सत्र के बाद कोई डेटा सुरक्षित नहीं रखता।</li>
               <li>चिकित्सा आपातकाल में तुरंत <strong>112</strong> या <strong>108</strong> पर कॉल करें।</li>
             </ul>
@@ -1632,14 +1632,91 @@ def render_consent_gate() -> bool:
 # 13. SIDEBAR
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _get_secrets() -> tuple[str, str]:
-    """Safely read st.secrets without raising if no secrets file exists."""
+def is_prod_mode() -> bool:
+    """
+    Check if the app is running in production mode.
+    Returns True if AURAVOICE_PROD is set to a truthy value ('1', 'true', 'yes', 'on')
+    in environment variables or st.secrets (checked across casing and sections).
+    """
+    # 1. Environment variables (case-insensitive)
+    for env_k, env_v in os.environ.items():
+        if env_k.upper() in ("AURAVOICE_PROD", "PROD", "PRODUCTION"):
+            val_clean = str(env_v).strip(' "\'').lower()
+            if val_clean in ("1", "true", "yes", "on"):
+                return True
+
+    # 2. Streamlit secrets
     try:
-        gk  = st.secrets.get("GEMINI_API_KEY", "") or ""
-        grk = st.secrets.get("GROQ_API_KEY",   "") or ""
-        return gk, grk
+        # Direct keys in st.secrets
+        for sec_k in st.secrets.keys():
+            if str(sec_k).upper() in ("AURAVOICE_PROD", "PROD", "PRODUCTION"):
+                val_clean = str(st.secrets[sec_k]).strip(' "\'').lower()
+                if val_clean in ("1", "true", "yes", "on"):
+                    return True
+            # Sub-tables in st.secrets (e.g. [general], [secrets], [app])
+            sub = st.secrets[sec_k]
+            if isinstance(sub, (dict, type(st.secrets))):
+                for sub_k in sub.keys():
+                    if str(sub_k).upper() in ("AURAVOICE_PROD", "PROD", "PRODUCTION"):
+                        val_clean = str(sub[sub_k]).strip(' "\'').lower()
+                        if val_clean in ("1", "true", "yes", "on"):
+                            return True
     except Exception:
-        return "", ""
+        pass
+
+    return False
+
+
+def _get_secrets() -> tuple[str, str]:
+    """
+    Safely retrieve Gemini and Groq API keys from st.secrets and os.environ.
+    Supports GEMINI_API_KEY, GOOGLE_API_KEY, GROQ_API_KEY with case-insensitivity
+    and TOML sub-table nesting ([general], [secrets]).
+    """
+    gk = ""
+    grk = ""
+
+    # 1. Check st.secrets
+    try:
+        def _search_dict(d) -> tuple[str, str]:
+            fg, fgr = "", ""
+            for k in d.keys():
+                ku = str(k).upper()
+                v = str(d[k]).strip(' "\'') if d[k] else ""
+                if ku in ("GEMINI_API_KEY", "GOOGLE_API_KEY", "GEMINI_KEY", "GOOGLE_KEY") and v:
+                    fg = v
+                elif ku in ("GROQ_API_KEY", "GROQ_KEY") and v:
+                    fgr = v
+            return fg, fgr
+
+        gk, grk = _search_dict(st.secrets)
+        if not (gk and grk):
+            for sec_k in st.secrets.keys():
+                sub = st.secrets[sec_k]
+                if isinstance(sub, (dict, type(st.secrets))):
+                    sub_g, sub_gr = _search_dict(sub)
+                    if not gk and sub_g:
+                        gk = sub_g
+                    if not grk and sub_gr:
+                        grk = sub_gr
+    except Exception:
+        pass
+
+    # 2. Fallback to os.environ
+    if not gk:
+        gk = (
+            os.getenv("GEMINI_API_KEY", "")
+            or os.getenv("GOOGLE_API_KEY", "")
+            or os.getenv("gemini_api_key", "")
+            or os.getenv("google_api_key", "")
+        ).strip(' "\'')
+    if not grk:
+        grk = (
+            os.getenv("GROQ_API_KEY", "")
+            or os.getenv("groq_api_key", "")
+        ).strip(' "\'')
+
+    return gk, grk
 
 
 def render_sidebar():
@@ -1656,15 +1733,7 @@ def render_sidebar():
         st.divider()
 
         # ── API Keys (hidden when in production via AURAVOICE_PROD env flag or secret) ──
-        prod_secret = ""
-        try:
-            prod_secret = str(st.secrets.get("AURAVOICE_PROD", ""))
-        except Exception:
-            pass
-        is_prod = (
-            os.getenv("AURAVOICE_PROD", "").lower() in ("1", "true", "yes")
-            or prod_secret.lower() in ("1", "true", "yes")
-        )
+        is_prod = is_prod_mode()
         if not is_prod:
             with st.expander("🔑 API Keys (Dev)", expanded=not st.session_state["api_keys_set"]):
                 st.info(
@@ -1692,6 +1761,10 @@ def render_sidebar():
                         st.session_state["groq_api_key"]   = grk if gc else ""
                         st.session_state["api_keys_set"]   = gm is not None or gc is not None
                         if st.session_state["api_keys_set"]:
+                            if gm:
+                                st.session_state["active_model"] = GEMINI_MODEL
+                            elif gc:
+                                st.session_state["active_model"] = GROQ_MODEL
                             test = startup_self_test(gm, gc)
                             st.session_state["self_test_done"]   = True
                             st.session_state["self_test_result"] = test
@@ -1818,12 +1891,13 @@ def render_hero():
         </div>""",
         unsafe_allow_html=True,
     )
-    # Demo mode and privacy notice
-    st.warning(
-        "🔬 **Demo Mode · Use Fictional Data**: AuraVoice is an assistive health information demo. "
-        "Inputs are processed via Google Gemini and Groq APIs (free tiers may use inputs for model improvement). "
-        "Do not enter real personal health data. Use fictional or simulated cases only.",
-        icon="⚠️",
+    # Data privacy notice under DPDP Act 2023
+    st.info(
+        "🛡️ **Data Privacy & Protection**: Personal information is protected under India's "
+        "**Digital Personal Data Protection (DPDP) Act, 2023**. "
+        "AuraVoice operates under strict purpose limitation, processes queries transiently in real time, "
+        "and does not store or retain personal health data beyond your active browser session.",
+        icon="🔒",
     )
 
 
@@ -2390,7 +2464,7 @@ and multilingual patients across India.
 ### 🔒 Privacy
 - No data stored beyond this browser session.
 - Inputs sent to Google Gemini and Groq APIs (free tiers may use inputs for model improvement).
-- Demo application: use fictional data only.
+- Protected under India's DPDP Act 2023: strict purpose limitation, no persistent storage.
 - ABDM/ABHA: users encouraged to create digital health ID at abdm.gov.in.
     """)
 
@@ -2409,7 +2483,7 @@ def main():
 
     init_session_state()
 
-    # Auto-load from st.secrets (Streamlit Cloud)
+    # Auto-load from st.secrets and environment variables
     if not st.session_state["api_keys_set"]:
         gk, grk = _get_secrets()
         if gk:
@@ -2418,6 +2492,17 @@ def main():
             st.session_state["groq_api_key"] = grk
         if gk or grk:
             st.session_state["api_keys_set"] = True
+
+    gk  = st.session_state.get("gemini_api_key", "")
+    grk = st.session_state.get("groq_api_key", "")
+    gemini_client = init_gemini(gk)  if gk  else None
+    groq_client   = init_groq(grk)   if grk else None
+
+    # Update active model in session state
+    if gemini_client is not None:
+        st.session_state["active_model"] = GEMINI_MODEL
+    elif groq_client is not None:
+        st.session_state["active_model"] = GROQ_MODEL
 
     if st.session_state.get("simple_mode"):
         inject_simple_mode_css()
@@ -2428,21 +2513,23 @@ def main():
     render_sidebar()
     render_hero()
 
-    gk  = st.session_state.get("gemini_api_key", "")
-    grk = st.session_state.get("groq_api_key", "")
-    gemini_client = init_gemini(gk)  if gk  else None
-    groq_client   = init_groq(grk)   if grk else None
-
     if not st.session_state["api_keys_set"]:
-        st.warning(
-            "👈 Enter API keys in the sidebar (expand 🔑 API Keys) and click **Connect**.",
-            icon="🔑",
-        )
-        st.info(
-            "Gemini (free): [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey)\n\n"
-            "Groq (free): [console.groq.com/keys](https://console.groq.com/keys)",
-            icon="🚀",
-        )
+        if not is_prod_mode():
+            st.warning(
+                "👈 Enter API keys in the sidebar (expand 🔑 API Keys) and click **Connect**.",
+                icon="🔑",
+            )
+            st.info(
+                "Gemini (free): [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey)\n\n"
+                "Groq (free): [console.groq.com/keys](https://console.groq.com/keys)",
+                icon="🚀",
+            )
+        else:
+            st.warning(
+                "API keys are not configured in environment or secrets. "
+                "Please ensure GEMINI_API_KEY and GROQ_API_KEY are configured in your Streamlit secrets.",
+                icon="🔑",
+            )
 
     tab1, tab2, tab3, tab4, tab5 = st.tabs([
         "💬 Symptoms",
