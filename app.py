@@ -88,6 +88,36 @@ log = logging.getLogger("auravoice")
 GEMINI_MODEL = os.getenv("AURAVOICE_GEMINI_MODEL", "gemini-3.6-flash")
 GROQ_MODEL   = os.getenv("AURAVOICE_GROQ_MODEL",   "qwen/qwen3.8-27b")
 
+# Resilient candidate model cascade for Gemini if a model encounters 503 high demand, 429, or 404
+GEMINI_FALLBACK_MODELS = [
+    "gemini-3.8-flash",
+    "gemini-3.6-flash",
+    "gemini-3.7-flash",
+    "gemini-3.5-flash",
+    "gemini-flash-latest",
+    "gemini-3.1-flash-lite",
+]
+
+def _get_gemini_candidate_models() -> list[str]:
+    seen = set()
+    models = []
+    for m in [GEMINI_MODEL] + GEMINI_FALLBACK_MODELS:
+        if m and m not in seen:
+            seen.add(m)
+            models.append(m)
+    return models
+
+def _is_transient_error(exc: Exception) -> bool:
+    err = str(exc).lower()
+    return any(
+        kw in err
+        for kw in (
+            "503", "unavailable", "high demand", "overloaded",
+            "quota", "rate", "429", "resourceexhausted",
+            "500", "502", "504", "deadline", "timeout", "connection"
+        )
+    )
+
 # STT language codes per user-profile language (BCP-47)
 STT_LANG_CODES = {
     "English":    "en-IN",
@@ -384,25 +414,29 @@ def llm_emergency_confirm(text: str, gemini_client, groq_client) -> bool:
 
 
 def _call_gemini_raw(client, prompt: str) -> Optional[str]:
-    """Minimal Gemini call — no system prompt, no streaming. 64 tokens with thinking budget 0."""
-    try:
-        config_kwargs: dict = {
-            "temperature": 0.0,
-            "max_output_tokens": 64,
-        }
-        if hasattr(genai_types, "ThinkingConfig"):
-            try:
-                config_kwargs["thinking_config"] = genai_types.ThinkingConfig(thinking_budget=0)
-            except Exception:
-                pass
-        resp = client.models.generate_content(
-            model=GEMINI_MODEL,
-            contents=[prompt],
-            config=genai_types.GenerateContentConfig(**config_kwargs),
-        )
-        return resp.text
-    except Exception:
-        return None
+    """Minimal Gemini call — tries candidate model cascade. 64 tokens with thinking budget 0."""
+    config_kwargs: dict = {
+        "temperature": 0.0,
+        "max_output_tokens": 64,
+    }
+    if hasattr(genai_types, "ThinkingConfig"):
+        try:
+            config_kwargs["thinking_config"] = genai_types.ThinkingConfig(thinking_budget=0)
+        except Exception:
+            pass
+    cfg = genai_types.GenerateContentConfig(**config_kwargs)
+    for model_name in _get_gemini_candidate_models():
+        try:
+            resp = client.models.generate_content(
+                model=model_name,
+                contents=[prompt],
+                config=cfg,
+            )
+            if resp.text:
+                return resp.text
+        except Exception:
+            continue
+    return None
 
 
 def _call_groq_raw(client, prompt: str) -> Optional[str]:
@@ -539,7 +573,8 @@ def call_gemini(
     _stream_placeholder=None,
 ) -> Optional[str]:
     """
-    Call Gemini. When stream=True the caller must pass a `_stream_placeholder`
+    Call Gemini with multi-model candidate cascade and transient retry.
+    When stream=True the caller must pass a `_stream_placeholder`
     (an st.empty() created INSIDE a `with st.chat_message("assistant"):` block)
     so streamed text renders inside the chat bubble, not outside it.
     """
@@ -552,32 +587,37 @@ def call_gemini(
         max_output_tokens=2048,
         top_p=0.9,
     )
-    for attempt in range(retries + 1):
-        try:
-            if stream:
-                placeholder = _stream_placeholder if _stream_placeholder is not None else st.empty()
-                full_text = ""
-                for chunk in client.models.generate_content_stream(
-                    model=GEMINI_MODEL, contents=contents, config=config
-                ):
-                    if chunk.text:
-                        full_text += chunk.text
-                        placeholder.markdown(full_text + "▌")
-                placeholder.markdown(full_text)
-                return full_text or None
-            else:
-                resp = client.models.generate_content(
-                    model=GEMINI_MODEL, contents=contents, config=config
-                )
-                return resp.text or None
-        except Exception as exc:
-            err = str(exc).lower()
-            if ("quota" in err or "rate" in err or "429" in err) and attempt < retries:
-                time.sleep(2 ** attempt)
-                continue
-            log.error("Gemini failed (attempt %d): %s", attempt, exc)
-            st.session_state["last_error"] = f"Gemini: {exc}"
-            return None
+    models_to_try = _get_gemini_candidate_models()
+    for model_name in models_to_try:
+        for attempt in range(retries + 1):
+            try:
+                if stream:
+                    placeholder = _stream_placeholder if _stream_placeholder is not None else st.empty()
+                    full_text = ""
+                    for chunk in client.models.generate_content_stream(
+                        model=model_name, contents=contents, config=config
+                    ):
+                        if chunk.text:
+                            full_text += chunk.text
+                            placeholder.markdown(full_text + "▌")
+                    placeholder.markdown(full_text)
+                    if full_text:
+                        st.session_state["active_model"] = model_name
+                        return full_text
+                else:
+                    resp = client.models.generate_content(
+                        model=model_name, contents=contents, config=config
+                    )
+                    if resp.text:
+                        st.session_state["active_model"] = model_name
+                        return resp.text
+            except Exception as exc:
+                if _is_transient_error(exc) and attempt < retries:
+                    time.sleep(1.0 * (2 ** attempt))
+                    continue
+                log.warning("Gemini model '%s' failed (attempt %d): %s", model_name, attempt, exc)
+                st.session_state["last_error"] = f"Gemini ({model_name}): {exc}"
+                break  # try next candidate model in cascade
     return None
 
 
@@ -636,7 +676,6 @@ def run_agent(
     enriched = inject_context(prompt, context_json)
 
     if gemini_client is not None:
-        st.session_state["active_model"] = GEMINI_MODEL
         result = call_gemini(
             gemini_client, enriched, image,
             stream=stream, _stream_placeholder=stream_placeholder
@@ -644,9 +683,29 @@ def run_agent(
         if result:
             return result
 
+    # If an image was submitted, the text-only fallback (Groq) CANNOT inspect photos.
+    # Passing the image-reading prompt to Groq causes confusing hallucinated
+    # responses like "Please upload the image... I am waiting for the photo."
+    if image is not None:
+        st.session_state["active_model"] = "vision-unavailable"
+        if gemini_client is None:
+            return (
+                "⚠️ **Vision analysis requires a Google Gemini API key.**\n\n"
+                "The text-only fallback model cannot read medicine labels or prescriptions.\n\n"
+                "👉 Please configure your free Google Gemini API key in the sidebar under **🔑 API Keys** "
+                "(or in Streamlit Cloud Secrets) and click **'🔗 Connect & Test APIs'**."
+            )
+        return (
+            "⚠️ **Medicine label analysis temporarily unavailable.**\n\n"
+            "The vision AI service experienced temporary high traffic or rate limiting.\n\n"
+            "- 🟢 **Image quality was received successfully** (sharpness & lighting verified).\n"
+            "- 👉 **Please click '🔄 Retry Analysis' below** in a few moments to retry.\n"
+            "- 💡 *Tip: You can also type or paste the medicine name in the **Doctor Tools** tab "
+            "to get an immediate dosage schedule and safety report.*"
+        )
+
     if groq_client is not None:
         st.session_state["active_model"] = f"groq/{GROQ_MODEL}"
-        note = "[Image analysis unavailable in text-fallback mode]\n\n" if image else ""
         if stream:
             with st.spinner("Connecting to fallback model…"):
                 result = call_groq(groq_client, enriched)
@@ -654,7 +713,7 @@ def run_agent(
             result = call_groq(groq_client, enriched)
         if result:
             # Return text ONLY — caller decides when/how to render
-            return note + result
+            return result
 
     st.session_state["active_model"] = "static-fallback"
     return SAFE_FALLBACK_RESPONSE
@@ -724,6 +783,7 @@ def process_camera_input(
     gemini_client,
     groq_client,
     user_profile: dict,
+    hint: str = "",
 ) -> tuple[str, dict]:
     """
     image bytes → quality check (soft) → LLM.
@@ -742,6 +802,13 @@ def process_camera_input(
         quality = check_image_quality(img)
         ctx = build_context(user_profile, ["age", "language", "medicines", "allergies"])
         prompt = VISION_PROMPTS.get(task, VISION_PROMPTS["environment"])
+
+        if hint.strip():
+            prompt = (
+                f"User note / medicine hint: '{hint.strip()}'. "
+                f"Verify this against the image text and transcribe all details accurately.\n\n"
+                + prompt
+            )
 
         # Soft-block: prepend quality note to prompt rather than refusing
         if not quality["ok"]:
@@ -1278,19 +1345,23 @@ def reconcile_medications_text(
     # Use temperature=0 + JSON-only system instruction (no SYSTEM_PROMPT)
     raw = None
     if gemini_client and GEMINI_AVAILABLE:
-        try:
-            resp = gemini_client.models.generate_content(
-                model=GEMINI_MODEL,
-                contents=[inject_context(prompt, ctx)],
-                config=genai_types.GenerateContentConfig(
-                    system_instruction=recon_system,
-                    temperature=0.0,
-                    max_output_tokens=2048,
-                ),
-            )
-            raw = resp.text
-        except Exception as exc:
-            log.error("Reconciliation Gemini failed: %s", exc)
+        recon_cfg = genai_types.GenerateContentConfig(
+            system_instruction=recon_system,
+            temperature=0.0,
+            max_output_tokens=2048,
+        )
+        for model_name in _get_gemini_candidate_models():
+            try:
+                resp = gemini_client.models.generate_content(
+                    model=model_name,
+                    contents=[inject_context(prompt, ctx)],
+                    config=recon_cfg,
+                )
+                if resp.text:
+                    raw = resp.text
+                    break
+            except Exception as exc:
+                log.warning("Reconciliation Gemini (%s) failed: %s", model_name, exc)
 
     if not raw and groq_client and GROQ_AVAILABLE:
         raw = call_groq(
@@ -2305,16 +2376,26 @@ def tab_vision_agent(gemini_client, groq_client):
         else st.camera_input("Take a photo", key="cam_capture")
     )
 
+    # Medicine name hint (optional)
+    med_hint = ""
+    if task_key == "prescription":
+        med_hint = st.text_input(
+            "💡 Medicine name hint (optional — helps if strip text is faint or partially cut)",
+            placeholder="e.g., Paracetamol 500mg / Metformin",
+            key="vis_med_hint",
+        )
+
     # Analyse button — result keyed by (file_hash, task) to prevent stale results
     if image_file:
         file_bytes = image_file.getvalue()
-        file_hash = hashlib.md5(file_bytes).hexdigest()[:12]
+        file_hash = hashlib.md5(file_bytes + med_hint.strip().encode()).hexdigest()[:12]
         cache_key = (file_hash, task_key)
         if st.button("🔍 Analyse Image", use_container_width=True, type="primary", key="vis_analyse"):
             with st.spinner("Analysing…"):
                 result, quality = process_camera_input(
                     image_file, task_key, gemini_client, groq_client,
                     st.session_state["user_profile"],
+                    hint=med_hint,
                 )
             st.session_state["vision_cache"][cache_key] = (result, quality)
 
@@ -2339,12 +2420,23 @@ def tab_vision_agent(gemini_client, groq_client):
             st.markdown("### 📋 Result")
             st.markdown(result)
             st.caption(f"_Model: {st.session_state.get('active_model','?')}_")
-            tts_controls(result, key_prefix="tts_vision")
-            st.download_button(
-                "📥 Download Report", data=result,
-                file_name=f"auravoice_{task_key}_report.txt",
-                mime="text/plain", use_container_width=True,
-            )
+            if "⚠️" in result and ("temporarily" in result or "retry" in result.lower()):
+                if st.button("🔄 Retry Analysis", key="vis_retry", type="primary", use_container_width=True):
+                    with st.spinner("Retrying analysis…"):
+                        new_res, new_qual = process_camera_input(
+                            image_file, task_key, gemini_client, groq_client,
+                            st.session_state["user_profile"],
+                            hint=med_hint,
+                        )
+                    st.session_state["vision_cache"][cache_key] = (new_res, new_qual)
+                    st.rerun()
+            else:
+                tts_controls(result, key_prefix="tts_vision")
+                st.download_button(
+                    "📥 Download Report", data=result,
+                    file_name=f"auravoice_{task_key}_report.txt",
+                    mime="text/plain", use_container_width=True,
+                )
 
 
 def tab_audio_agent(gemini_client, groq_client):
