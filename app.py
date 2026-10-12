@@ -1899,11 +1899,13 @@ def render_sidebar():
         st.title("AuraVoice ⚕️")
         st.caption("Multimodal Health & Accessibility Agent")
 
-        st.session_state["simple_mode"] = st.toggle(
+        simple_mode_active = st.toggle(
             "🔤 Simple Mode (large text)",
-            value=st.session_state.get("simple_mode", False),
+            key="simple_mode",
             help="Larger text, bigger buttons — for elderly or low-vision users",
         )
+        if simple_mode_active:
+            inject_simple_mode_css()
         st.divider()
 
         # ── API Keys (hidden when in production AND keys are successfully loaded) ──
