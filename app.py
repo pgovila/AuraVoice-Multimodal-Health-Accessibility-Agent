@@ -1154,27 +1154,42 @@ def generate_handoff_summary(
     user_profile: dict,
 ) -> str:
     """
-    SOAP-lite handoff using ONLY what the patient reported.
-    No invented questions — questions come from the patient's own words.
+    Structured 1-page Doctor Handoff Summary for fast 2-3 minute consultations.
+    Accepts patient symptoms in ANY language, dialect, or colloquial phrasing.
+    Never refuses or claims symptoms are insufficient.
     """
     ctx = build_context(user_profile, ["age", "language", "region"])
     prompt = (
-        "Generate a concise doctor handoff summary using ONLY the information below.\n"
-        "Do NOT invent content, diagnoses, or questions not implied by what the patient said.\n\n"
-        f"Patient's own words (symptoms): {symptoms}\n"
-        f"Duration: {duration or 'not stated'}\n"
-        f"Current medicines: {medicines or 'none reported'}\n"
-        f"Allergies: {allergies or 'none reported'}\n"
-        f"Known conditions: {conditions or 'none reported'}\n\n"
-        "Format:\n"
-        "## Patient Summary (for Doctor)\n"
-        "**Patient says:** [verbatim or close paraphrase of their words]\n"
-        "**Duration:** ...\n"
-        "**Current Medications:** [list]\n"
-        "**Known Allergies:** [list]\n"
-        "**Known Conditions:** [list]\n"
-        "**Patient's questions for you:** [derived only from what they said — if none, write 'Patient has not stated specific questions']\n\n"
-        "Keep to one printed page. Do not add diagnoses, assessments, or recommendations."
+        "You are AuraVoice Clinical Assistant creating a concise, structured 1-page Doctor Handoff Summary "
+        "to assist busy physicians during short outpatient (OPD) consultations.\n\n"
+        "CORE RULES:\n"
+        "1. The patient may express their symptoms in ANY language, dialect, colloquial terminology, or informal phrasing "
+        "(e.g., English, Hindi, Hinglish, regional phrasing, or brief expressions like 'chakkar aa rahe hain', 'pet kharab hai', 'vomitting a lot').\n"
+        "2. NEVER refuse, reject, or claim the symptoms are 'not at par' or insufficient to generate a handoff. "
+        "ALWAYS accept the patient's words and structure them cleanly for the attending physician.\n"
+        "3. Provide the patient's verbatim words alongside a clear clinical translation/description.\n"
+        "4. Highlight any pertinent clinical considerations based on current medications and existing conditions "
+        "(e.g. fluid loss while on antihypertensives like Ramipril, electrolyte risks, elderly fall risks).\n\n"
+        "PATIENT INPUT:\n"
+        f"- Patient's own words (symptoms): {symptoms}\n"
+        f"- Duration: {duration or 'not stated'}\n"
+        f"- Current medicines: {medicines or 'none reported'}\n"
+        f"- Known allergies: {allergies or 'none reported'}\n"
+        f"- Known conditions: {conditions or 'none reported'}\n\n"
+        "OUTPUT FORMAT (Markdown):\n"
+        "## 📋 Patient Summary (for Doctor)\n\n"
+        "### 1. Chief Complaint & History\n"
+        "- **Patient's Verbatim Words:** [exact patient words in quotation marks]\n"
+        "- **Clinical Description / Translation:** [concise clinical description and English translation if non-English]\n"
+        "- **Duration / Timeline:** [duration or 'Not specified']\n\n"
+        "### 2. Medical Context & Clinical Attention Notes\n"
+        "- **Current Medications:** [list]\n"
+        "- **Known Conditions:** [list]\n"
+        "- **Known Allergies:** [list]\n"
+        "- **⚠️ Clinical Attention Note:** [Highlight relevant clinical considerations, e.g. fluid loss / dehydration risk while on ACE inhibitors like Ramipril, orthostatic hypotension risk, etc. If none, write 'No acute medication conflict noted.']\n\n"
+        "### 3. Recommended Consultation Focus & Clarifications\n"
+        "[Provide 2-3 practical, focused questions the patient should ask or the doctor should probe during the visit]\n\n"
+        "⚠️ *This is an AI-generated handoff summary to assist clinical consultation — not a medical diagnosis. Please confirm all details with the patient.*"
     )
     return run_agent(prompt, None, gemini_client, groq_client, ctx)
 
