@@ -85,17 +85,18 @@ log = logging.getLogger("auravoice")
 # ─────────────────────────────────────────────────────────────────────────────
 
 # Make model IDs configurable via env so they can be updated without code change
-GEMINI_MODEL = os.getenv("AURAVOICE_GEMINI_MODEL", "gemini-3.6-flash")
+GEMINI_MODEL = os.getenv("AURAVOICE_GEMINI_MODEL", "gemini-2.5-flash-lite")
 GROQ_MODEL   = os.getenv("AURAVOICE_GROQ_MODEL",   "qwen/qwen3.8-27b")
 
-# Resilient candidate model cascade for Gemini if a model encounters 503 high demand, 429, or 404
+# Resilient candidate model cascade for Gemini in speed & reliability priority
 GEMINI_FALLBACK_MODELS = [
-    "gemini-3.8-flash",
-    "gemini-3.6-flash",
-    "gemini-3.7-flash",
-    "gemini-3.5-flash",
-    "gemini-flash-latest",
+    "gemini-2.5-flash-lite",
     "gemini-3.1-flash-lite",
+    "gemini-3.5-flash-lite",
+    "gemini-flash-latest",
+    "gemini-3.6-flash",
+    "gemini-3.5-flash",
+    "gemini-3.8-flash",
 ]
 
 def _get_gemini_candidate_models() -> list[str]:
@@ -386,7 +387,8 @@ def llm_emergency_check(text: str, gemini_client, groq_client) -> Optional[bool]
         f"Text: \"{text}\"\n\n"
         "Reply with ONLY the single word YES or NO. No other text."
     )
-    for client, call_fn in [(gemini_client, _call_gemini_raw), (groq_client, _call_groq_raw)]:
+    # Prioritize Groq LPU first for sub-second binary YES/NO safety verification; fallback to Gemini
+    for client, call_fn in [(groq_client, _call_groq_raw), (gemini_client, _call_gemini_raw)]:
         if client is not None:
             raw = call_fn(client, prompt)
             if raw:
