@@ -1,0 +1,10 @@
+# Ignore Python backend files so Vercel serves the static HTML competition portal
+*.py
+*.csv
+*.bat
+*.pptx
+*.toml
+requirements.txt
+venv/
+tests/
+.streamlit/
