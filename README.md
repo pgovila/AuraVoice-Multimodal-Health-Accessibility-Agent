@@ -2,11 +2,13 @@
 
 > *"What if your phone could be your doctor, your guide, and your safety net — all at once?"*
 
+[![Vercel App](https://img.shields.io/badge/Vercel-Deployed-black?style=flat&logo=vercel&logoColor=white)](https://aura-voice-multimodal-health-access.vercel.app/)
 [![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://auravoice-multimodal-health-accessibility-agent-7sc3pkcpirqquh.streamlit.app/)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://python.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-🚀 **Live Deployment:** [https://auravoice-multimodal-health-accessibility-agent-7sc3pkcpirqquh.streamlit.app/](https://auravoice-multimodal-health-accessibility-agent-7sc3pkcpirqquh.streamlit.app/)  
+🚀 **Live Competition Portal (Vercel):** [https://aura-voice-multimodal-health-access.vercel.app/](https://aura-voice-multimodal-health-access.vercel.app/)  
+☁️ **Streamlit Cloud Engine:** [https://auravoice-multimodal-health-accessibility-agent-7sc3pkcpirqquh.streamlit.app/](https://auravoice-multimodal-health-accessibility-agent-7sc3pkcpirqquh.streamlit.app/)  
 
 ---
 
@@ -290,6 +292,15 @@ streamlit run app.py
 3. Enter API keys in sidebar → click **🔗 Connect APIs** (or auto-loaded from secrets)
 4. Fill in your profile → click **💾 Save Profile**
 5. Use any of the five tabs
+
+---
+
+## 🌐 Live Deployments
+
+| Environment | URL | Details |
+|---|---|---|
+| **Vercel Competition Portal** | [https://aura-voice-multimodal-health-access.vercel.app/](https://aura-voice-multimodal-health-access.vercel.app/) | Official Unstop submission link with judge guide |
+| **Streamlit Community Cloud** | [https://auravoice-multimodal-health-accessibility-agent-7sc3pkcpirqquh.streamlit.app/](https://auravoice-multimodal-health-accessibility-agent-7sc3pkcpirqquh.streamlit.app/) | Live multimodal AI engine & direct standalone app |
 
 ---
 
