@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AuraVoice — Multimodal Health & Accessibility Agent</title>
+  <meta name="description" content="AuraVoice: AI-powered Multimodal Health & Accessibility Agent for clinical triage, prescription analysis, and doctor handoff.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #080c14;
+      --card-bg: rgba(15, 23, 42, 0.85);
+      --border-color: rgba(148, 163, 184, 0.15);
+      --primary: #38bdf8;
+      --primary-glow: rgba(56, 189, 248, 0.25);
+      --accent: #10b981;
+      --danger: #ef4444;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body, html {
+      height: 100%;
+      width: 100%;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ────────────────────────────────────────── */
+    header {
+      height: 60px;
+      min-height: 60px;
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 1.25rem;
+      z-index: 50;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      text-decoration: none;
+      color: var(--text-main);
+    }
+
+    .logo-badge {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #0284c7, #38bdf8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 16px var(--primary-glow);
+    }
+
+    .logo-badge svg {
+      width: 20px;
+      height: 20px;
+      fill: #ffffff;
+    }
+
+    .brand-title {
+      font-weight: 700;
+      font-size: 1.05rem;
+      letter-spacing: -0.01em;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .badge-tag {
+      font-size: 0.68rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: rgba(56, 189, 248, 0.12);
+      color: var(--primary);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      letter-spacing: 0.04em;
+    }
+
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      font-size: 0.78rem;
+      color: var(--accent);
+      font-weight: 500;
+      background: rgba(16, 185, 129, 0.1);
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(16, 185, 129, 0.25);
+    }
+
+    .pulse-dot {
+      width: 7px;
+      height: 7px;
+      background: var(--accent);
+      border-radius: 50%;
+      box-shadow: 0 0 8px var(--accent);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.42rem 0.85rem;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: 1px solid transparent;
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: var(--border-color);
+      color: var(--text-main);
+    }
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #0284c7, #0ea5e9);
+      color: #ffffff;
+      box-shadow: 0 2px 10px rgba(14, 165, 233, 0.3);
+    }
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #0369a1, #0284c7);
+      transform: translateY(-1px);
+    }
+
+    /* ── App Frame ─────────────────────────────────────── */
+    .app-container {
+      flex: 1;
+      width: 100%;
+      position: relative;
+      background: #0e1117;
+    }
+
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      display: block;
+    }
+
+    /* ── Modal / Judge Guide ────────────────────────────── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(8px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 1rem;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal {
+      background: #0f172a;
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      max-width: 650px;
+      width: 100%;
+      max-height: 85vh;
+      overflow-y: auto;
+      padding: 1.75rem;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+      position: relative;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.25rem;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 0.75rem;
+    }
+
+    .modal-header h2 {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+    .close-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.5rem;
+      cursor: pointer;
+      line-height: 1;
+    }
+    .close-btn:hover { color: var(--text-main); }
+
+    .guide-section {
+      margin-bottom: 1.2rem;
+    }
+    .guide-section h3 {
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin-bottom: 0.45rem;
+      color: #e2e8f0;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .guide-section p {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin-bottom: 0.5rem;
+    }
+
+    .code-box {
+      background: #090d16;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 0.65rem 0.85rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78rem;
+      color: #38bdf8;
+      overflow-x: auto;
+      margin-top: 0.35rem;
+    }
+
+    .url-customizer {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+    }
+
+    .url-customizer input {
+      flex: 1;
+      background: #090d16;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.82rem;
+      color: var(--text-main);
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .url-customizer input:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    @media (max-width: 768px) {
+      .brand-title span:last-child { display: none; }
+      .status-indicator { display: none; }
+      .btn span { display: none; }
+      .btn { padding: 0.45rem 0.6rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Header Bar -->
+  <header>
+    <a href="#" class="brand">
+      <div class="logo-badge">
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14.5v-9l6 4.5-6 4.5z"/></svg>
+      </div>
+      <div class="brand-title">
+        <span>AuraVoice</span>
+        <span class="badge-tag">Unstop Submission</span>
+      </div>
+    </a>
+
+    <div class="status-indicator">
+      <div class="pulse-dot"></div>
+      <span>Multimodal Agent Active</span>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-secondary" onclick="openModal()" title="View Judge Guide & Benchmark">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+        <span>Judge Guide</span>
+      </button>
+
+      <a id="directLink" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-primary" title="Launch standalone in full window">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+        <span>Open Standalone</span>
+      </a>
+    </div>
+  </header>
+
+  <!-- Live App Embed Frame -->
+  <main class="app-container">
+    <iframe
+      id="appFrame"
+      src=""
+      allow="microphone; camera; display-capture; clipboard-read; clipboard-write; autoplay"
+      loading="eager"
+      title="AuraVoice Health Agent"
+    ></iframe>
+  </main>
+
+  <!-- Judge / Evaluation Modal -->
+  <div class="modal-overlay" id="modalOverlay" onclick="closeModalOnBg(event)">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>AuraVoice — Evaluation & Judge Guide</h2>
+        <button class="close-btn" onclick="closeModal()">&times;</button>
+      </div>
+
+      <div class="guide-section">
+        <h3>🎯 What is AuraVoice?</h3>
+        <p>AuraVoice is an accessible multimodal clinical agent designed for low-bandwidth and multilingual healthcare accessibility. It features zero-latency emergency triage (no false-suppress on negations), clinical prescription OCR, speech-to-text, and patient-to-doctor clinical handoff.</p>
+      </div>
+
+      <div class="guide-section">
+        <h3>⚡ Recommended Judge Test Cases</h3>
+        <p><strong>1. Multilingual Emergency Triage:</strong> Try typing or speaking: <em>"My chest has crushing pain radiating to my left arm"</em> or <em>"सीने में बहुत तेज़ दर्द हो रहा है"</em>.</p>
+        <p><strong>2. Multimodal Prescription Check:</strong> Upload a medical prescription or medicine strip image under the Vision Analysis tab.</p>
+        <p><strong>3. Voice Accessibility:</strong> Use the built-in microphone button to dictate symptoms in Hindi, Tamil, Telugu, or English.</p>
+      </div>
+
+      <div class="guide-section">
+        <h3>⚙️ Streamlit Backend Link</h3>
+        <p>Current embedded engine URL:</p>
+        <div class="url-customizer">
+          <input type="text" id="customUrlInput" value="" placeholder="https://auravoice.streamlit.app">
+          <button class="btn btn-primary" onclick="updateAppUrl()">Apply</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Default Streamlit Cloud deployment URL
+    const DEFAULT_STREAMLIT_URL = "https://auravoice-multimodal-health-accessibility-agent-7sc3pkcpirqquh.streamlit.app";
+
+    // Allow overriding via query param ?url=https://...
+    const urlParams = new URLSearchParams(window.location.search);
+    const activeUrl = urlParams.get('url') || DEFAULT_STREAMLIT_URL;
+
+    const iframe = document.getElementById('appFrame');
+    const directLink = document.getElementById('directLink');
+    const customUrlInput = document.getElementById('customUrlInput');
+
+    function setAppUrl(url) {
+      // Ensure embed query param is set for clean UI
+      const cleanUrl = url.replace(/\/+$/, "");
+      const embedUrl = cleanUrl.includes('?') ? `${cleanUrl}&embed=true` : `${cleanUrl}/?embed=true`;
+      iframe.src = embedUrl;
+      directLink.href = cleanUrl;
+      customUrlInput.value = cleanUrl;
+    }
+
+    setAppUrl(activeUrl);
+
+    function updateAppUrl() {
+      const val = customUrlInput.value.trim();
+      if (val) {
+        setAppUrl(val);
+        closeModal();
+      }
+    }
+
+    function openModal() {
+      document.getElementById('modalOverlay').classList.add('active');
+    }
+
+    function closeModal() {
+      document.getElementById('modalOverlay').classList.remove('active');
+    }
+
+    function closeModalOnBg(e) {
+      if (e.target.id === 'modalOverlay') {
+        closeModal();
+      }
+    }
+  </script>
+</body>
+</html>
